@@ -51,5 +51,6 @@
       "maxTokens": 1024
     }
   ],
-  "activePresetId": "builtin-short"
+  "activePresetId": "builtin-short",
+  "customThemes": []
 }
