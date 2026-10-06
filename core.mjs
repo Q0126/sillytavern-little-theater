@@ -138,7 +138,7 @@ export function composeInstruction(text, selected) {
 }
 
 const newAffixes = {
-    prefixes: [{ id: 'p-side-story', name: '暂停正文 · 番外', text: '正文剧情暂停，为我生成一则番外。' }],
+    prefixes: [{ id: 'p-side-story', name: '正文剧情暂停，为我生成一则番外', text: '正文剧情暂停，为我生成一则番外' }],
     suffixes: [
         { id: 's-complete-ending', name: '一次性写到结局', text: '请一次性把这则小剧场完整写到结局，不要中途停下或等待下一轮继续。' },
         { id: 's-unlimited-length', name: '字数不限', text: '字数不限，按剧情需要充分展开。' },
@@ -147,12 +147,24 @@ const newAffixes = {
 };
 
 export function upgradeAffixes(data) {
-    if (data.builtInAffixesVersion >= 2) return false;
-    for (const [kind, entries] of Object.entries(newAffixes)) {
-        for (const entry of entries) {
-            if (!data[kind].some(i => i.id === entry.id || i.text === entry.text)) data[kind].push({ ...entry });
+    if (data.builtInAffixesVersion >= 3) return false;
+    if (!(data.builtInAffixesVersion >= 2)) {
+        for (const [kind, entries] of Object.entries(newAffixes)) {
+            for (const entry of entries) {
+                if (!data[kind].some(i => i.id === entry.id || i.text === entry.text)) data[kind].push({ ...entry });
+            }
         }
     }
-    data.builtInAffixesVersion = 2;
+    const revisePrefix = item => {
+        if (item.id === 'p-side-story') Object.assign(item, newAffixes.prefixes[0]);
+    };
+    const retiredSuffix = item => item.id === 's1' || (item.name === '完整短篇' && item.text === '写成有起承转合的完整小剧场，不要只给出大纲。');
+    data.prefixes.forEach(revisePrefix);
+    data.suffixes = data.suffixes.filter(item => !retiredSuffix(item));
+    for (const group of data.groups || []) {
+        group.prefix?.forEach(revisePrefix);
+        if (group.suffix) group.suffix = group.suffix.filter(item => !retiredSuffix(item));
+    }
+    data.builtInAffixesVersion = 3;
     return true;
 }

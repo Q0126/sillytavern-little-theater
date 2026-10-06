@@ -137,3 +137,21 @@ test('sending concatenates ordered affixes without dropping repeated selections 
     assert.equal(composeInstruction('  脑洞指令  ', selected), '暂停正文\n\n暂停正文\n\n脑洞指令\n\n写到结局\n\n字数不限');
     assert.throws(() => composeInstruction(' ', selected), /不能为空/);
 });
+
+test('v3 affix migration uses the exact requested prefix and removes the retired suffix from old libraries and combinations', () => {
+    const prefix = { id: 'p-side-story', name: '暂停正文 · 番外', text: '正文剧情暂停，为我生成一则番外。' };
+    const retired = { id: 's1', name: '完整短篇', text: '写成有起承转合的完整小剧场，不要只给出大纲。' };
+    const custom = { id: 'custom-short', name: '完整短篇', text: '自己的不同内容' };
+    const saved = [{ text: '已经收藏的原指令' }];
+    const data = { builtInAffixesVersion: 2, prefixes: [prefix], suffixes: [retired, custom], groups: [{ prefix: [{ ...prefix }], suffix: [{ ...retired }, { ...custom }] }], saved };
+    assert.equal(upgradeAffixes(data), true);
+    assert.equal(data.prefixes[0].text, '正文剧情暂停，为我生成一则番外');
+    assert.equal(data.groups[0].prefix[0].text, '正文剧情暂停，为我生成一则番外');
+    assert.deepEqual(data.suffixes, [custom]);
+    assert.deepEqual(data.groups[0].suffix, [custom]);
+    assert.equal(data.saved, saved);
+    assert.equal(data.builtInAffixesVersion, 3);
+    data.prefixes = [];
+    assert.equal(upgradeAffixes(data), false);
+    assert.deepEqual(data.prefixes, []);
+});

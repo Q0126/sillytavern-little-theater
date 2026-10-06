@@ -54,7 +54,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
         <details class="chosen-details"><summary id="selection-summary">已添加：前缀 0 条 · 后缀 0 条</summary><div class="row between" style="margin-top:12px"><span class="note">按下方顺序拼接</span><button class="small ghost" id="clear-selected">清空本次</button></div><label class="label">前缀</label><div id="prefix-selected" class="stack"></div><label class="label">后缀</label><div id="suffix-selected" class="stack"></div></details>
         <details style="margin-top:14px"><summary>查看 AI 生成请求</summary><div id="prompt-preview" class="preview"></div></details>
       </div>
-    </div><div class="panel"><div class="row between title"><h2>生成的指令</h2><span id="result-count" class="muted">0 条</span></div><p class="note" style="margin-bottom:12px">AI 只整理脑洞；保存与发送时按前缀、脑洞指令、后缀拼接。</p><div id="results" class="results"></div></div></div>
+    </div><div class="panel"><div class="row between title"><h2>生成的指令</h2><span id="result-count" class="muted">0 条</span></div><p class="note" style="margin-bottom:12px">AI 只整理脑洞；保存与发送时拼接所选前后缀。新生成会保留旧结果，可逐条比较、编辑和删除。</p><div id="results" class="results"></div></div></div>
   </section>
   <section id="page-saved" class="page">
     <div class="panel">
@@ -140,12 +140,13 @@ const host=window.parent!==window?window.parent.LittleTheaterHost:null;
 let batchController=null,activeSnapshot=null;
 const legacyBuiltInPrompt="你是小剧场作者。根据给定的角色资料、用户设定、相关聊天与本次脑洞，写一篇简短完整的小剧场。保持人物性格与关系一致，不擅自改变人物设定。围绕本次情境展开，使用自然的动作、对话和少量必要的环境描写。只输出故事正文，不要输出思考过程、创作说明、总结、状态栏、手机面板或额外的 HTML，除非本次脑洞明确要求。不要复述输入指令或大段重复已有聊天。";
 const previousBuiltInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。前缀、后缀里的创作要求应保留或自然融入最终指令，交给酒馆角色执行，不在本次生成中直接演出。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
-const builtInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。仅根据用户本次输入的脑洞整理指令，不读取、改写或补入前缀和后缀；前后缀由界面在发送时单独拼接。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
-function upgradeBuiltInPresets(items){return items.map(p=>[legacyBuiltInPrompt,previousBuiltInPrompt].includes(p.systemPrompt)?{...p,systemPrompt:builtInPrompt,name:p.name==="简短小剧场"?"小剧场指令生成":p.name}:p);}
+const previousIdeaOnlyPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。仅根据用户本次输入的脑洞整理指令，不读取、改写或补入前缀和后缀；前后缀由界面在发送时单独拼接。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
+const builtInPrompt="你是小剧场创作指令整理助手。仅把用户本次输入的脑洞整理成可直接发送给酒馆角色的创作指令，不生成故事正文。保留用户明确写出的情境、参与者、事件、限制和要求；仅补充必要的连接语，使表达清晰，不为凑字数添加新的剧情要求。角色资料、用户设定和最近聊天只用于辨认人物与已有关系，不用于推断或规定角色在本次情境下的态度。禁止自行指定角色的初始态度、情绪、心理、反应、具体台词、选择、行动路线、情绪转变或结局；不要安排角色先如何再如何、从某种态度转变为另一种态度。用户明确指定的反应或情绪要求可以原样保留，未指定的一律留白，由酒馆角色依据人设和现场情境自行发挥。不要追加描写某种情绪变化、逐渐接受某事等引导角色反应的要求。只整理用户的脑洞，不读取、改写或补入前缀和后缀，前后缀由界面另行拼接。只输出整理后的创作指令，不附解释、分析、思考过程、状态栏或反问。";
+function upgradeBuiltInPresets(items){return items.map(p=>[legacyBuiltInPrompt,previousBuiltInPrompt,previousIdeaOnlyPrompt].includes(p.systemPrompt)?{...p,systemPrompt:builtInPrompt,name:p.name==="简短小剧场"?"小剧场指令生成":p.name}:p);}
 const defaultPreset=()=>({id:"builtin-short",name:"小剧场指令生成",systemPrompt:builtInPrompt,targetWords:300,maxTokens:1024});
 
 const palettes={day:[{id:"cream",name:"奶油手账",note:"暖白 · 焦糖",bg:"#f4efe5",card:"#fffcf5",accent:"#8a6945",soft:"#e9dac6"},{id:"sakura",name:"浅樱花笺",note:"樱粉 · 玫瑰",bg:"#f6edf1",card:"#fffbfd",accent:"#a46385",soft:"#eed4e1"},{id:"mint",name:"青柠纸页",note:"浅绿 · 橄榄",bg:"#eef3e9",card:"#fcfff7",accent:"#607f48",soft:"#dae8ce"},{id:"sky",name:"晴空来信",note:"雾蓝 · 天青",bg:"#edf3f8",card:"#fbfdff",accent:"#527fa6",soft:"#d5e5f2"}],night:[{id:"violet",name:"夜紫微光",note:"墨紫 · 薰衣草",bg:"#171820",card:"#292a36",accent:"#c9b5ff",soft:"#332b44"},{id:"rose",name:"暮色玫瑰",note:"烟粉 · 莓紫",bg:"#231a20",card:"#3b2c35",accent:"#f0b5ce",soft:"#503343"},{id:"forest",name:"松林夜语",note:"深绿 · 鼠尾草",bg:"#16201d",card:"#2a3932",accent:"#b4d9b0",soft:"#354b37"},{id:"ocean",name:"深海星光",note:"藏蓝 · 冰蓝",bg:"#131e29",card:"#26384a",accent:"#add6f5",soft:"#304b62"}]};
-const defaults=()=>({prefixes:[{id:"p1",name:"人物不跑偏",text:"依据角色的性格、经历与关系描写人物，保持行为和语言的一致性。"},{id:"p2",name:"细腻叙事",text:"使用细腻、自然的叙事，借助动作、对话和环境表现情绪。"}],suffixes:[{id:"s1",name:"完整短篇",text:"写成有起承转合的完整小剧场，不要只给出大纲。"},{id:"s2",name:"开放结尾",text:"结尾留下可以继续发展的余地，不要用总结句收束。"},{id:"s3",name:"只输出正文",text:"只输出故事正文，不要解释创作过程。"}],groups:[],saved:[],replies:[],theme:"violet",api:{url:"",model:""}});
+const defaults=()=>({prefixes:[{id:"p1",name:"人物不跑偏",text:"依据角色的性格、经历与关系描写人物，保持行为和语言的一致性。"},{id:"p2",name:"细腻叙事",text:"使用细腻、自然的叙事，借助动作、对话和环境表现情绪。"}],suffixes:[{id:"s2",name:"开放结尾",text:"结尾留下可以继续发展的余地，不要用总结句收束。"},{id:"s3",name:"只输出正文",text:"只输出故事正文，不要解释创作过程。"}],groups:[],saved:[],replies:[],theme:"violet",api:{url:"",model:""}});
 let state;
 try{const cached=host?host.readState():JSON.parse(localStorage.getItem(storageKey)||"null");state=cached&&["prefixes","suffixes","groups","saved"].every(k=>Array.isArray(cached[k]))?cached:defaults();}catch{state=defaults();}
 const initialStateBeforeUpgrade=JSON.stringify(state);
@@ -177,7 +178,7 @@ function switchTab(name){document.querySelectorAll(".tabs button").forEach(b=>{b
 function switchCollection(name){collectionQueries[collection]=$("saved-search").value;collection=name;$("saved-search").value=collectionQueries[name]||"";storyFilterId="";document.querySelectorAll("[data-collection]").forEach(b=>b.classList.toggle("active",b.dataset.collection===name));renderSaved();}
 function buildPrompt(){return $("idea").value.trim();}
 function activePreset(){return state.promptPresets.find(p=>p.id===state.activePresetId)||state.promptPresets[0];}
-function buildGenerationRequest(){const p=activePreset();return {model:state.api.model||"",messages:[{role:"system",content:p.systemPrompt+`\n\n篇幅要求：本次生成的创作指令以约 ${p.targetWords} 字为目标，简洁明确，保留必要情境与要求。这是指令本身的长度，不是最终小剧场正文的字数。`},{role:"user",content:buildPrompt()}],max_tokens:p.maxTokens};}
+function buildGenerationRequest(){const p=activePreset();return {model:state.api.model||"",messages:[{role:"system",content:p.systemPrompt+`\n\n篇幅要求：本次生成的创作指令以约 ${p.targetWords} 字为目标，简洁明确，保留必要情境与要求。这是指令本身的长度，不是最终小剧场正文的字数。不必凑满目标字数；不得为扩写而添加角色态度、情绪转变或反应路线。`},{role:"user",content:buildPrompt()}],max_tokens:p.maxTokens};}
 function updatePreview(){const request=buildGenerationRequest();$("prompt-preview").textContent=`【小剧场指令生成预设：${activePreset().name}】\n${request.messages[0].content}\n\n【本次脑洞】\n${request.messages[1].content||"尚未添加内容"}\n\n输出上限：${request.max_tokens} token`;}
 function renderPresets(){const p=activePreset();$("prompt-preset").innerHTML=state.promptPresets.map(i=>`<option value="${esc(i.id)}">${esc(i.name)}</option>`).join("");$("prompt-preset").value=p.id;$("preset-name").value=p.name;$("preset-system").value=p.systemPrompt;$("preset-words").value=p.targetWords;$("preset-tokens").value=p.maxTokens;$("delete-preset").disabled=state.promptPresets.length<=1;updatePreview();}
 function savePreset(announce=true){const p=activePreset(),name=$("preset-name").value.trim(),systemPrompt=$("preset-system").value.trim(),targetWords=Number($("preset-words").value),maxTokens=Number($("preset-tokens").value);if(!name||!systemPrompt){toast("请填写预设名称和提示词");return false;}if(!Number.isInteger(targetWords)||targetWords<50||targetWords>10000||!Number.isInteger(maxTokens)||maxTokens<128||maxTokens>16000){toast("字数范围为 50–10000，输出上限范围为 128–16000 token");return false;}Object.assign(p,{name,systemPrompt,targetWords,maxTokens});if(!persist())return false;renderPresets();if(announce)toast("提示词预设已保存并使用");return true;}
@@ -233,7 +234,8 @@ function deleteCurrentTheme(){
 
 function openEditor(kind,id=null){resumePicker=$("picker-dialog").open;if(resumePicker)$("picker-dialog").close();editing={kind,id};$("entry-save").textContent=kind==="group"?"保存组合":"保存到"+(kind==="prefix"?"前缀库":"后缀库");$("entry-save-add").hidden=kind==="group";const item=id?source(kind).find(i=>i.id===id):null;$("editor-heading").textContent=kind==="group"?"保存本次组合":(id?"编辑":"新建")+(kind==="prefix"?"前缀":"后缀");$("entry-name").value=item?.name||"";$("entry-content").value=item?.text||"";$("entry-content-wrap").hidden=kind==="group";$("entry-content").required=kind!=="group";$("group-description").hidden=kind!=="group";$("group-description").textContent=`保存本次 ${selected.prefix.length} 条前缀与 ${selected.suffix.length} 条后缀，以及它们的顺序。`;$("editor-dialog").showModal();}
 $("editor-form").addEventListener("submit",e=>{e.preventDefault();const name=$("entry-name").value.trim(),text=$("entry-content").value.trim(),kind=editing.kind;if(!name||(kind!=="group"&&!text)){toast("请填写名称和内容");return;}let savedItem;if(kind==="group"){state.groups.push({id:uid(),name,prefix:selected.prefix.map(({selectionId,...i})=>({...i})),suffix:selected.suffix.map(({selectionId,...i})=>({...i}))});}else{const list=source(kind);savedItem=list.find(i=>i.id===editing.id);if(savedItem){Object.assign(savedItem,{name,text});selected[kind].forEach(i=>{if(i.id===savedItem.id)Object.assign(i,{name,text});});}else{savedItem={id:uid(),name,text};list.push(savedItem);}if(e.submitter?.dataset.alsoAdd)selected[kind].push({...savedItem,selectionId:uid()});}const ok=persist();$("editor-dialog").close();renderSelection();renderLibrary();if(resumePicker){resumePicker=false;openPicker(pickerKind);}if(ok)toast(kind==="group"?"组合已保存":(kind==="prefix"?"前缀":"后缀")+(e.submitter?.dataset.alsoAdd?"已保存并添加":"已保存到库"));});
-function renderResults(){$("result-count").textContent=results.length+" 条";$("results").innerHTML=results.length?results.map((i,n)=>`<article class="result-card"><div class="row between"><h3>小剧场指令 ${String(n+1).padStart(2,"0")}</h3><span class="tag">可编辑</span></div><textarea aria-label="小剧场指令内容" data-result-text="${i.id}">${esc(i.text)}</textarea><div class="actions"><button class="small" data-action="save-result" data-id="${i.id}">☆ 保存</button><button class="small primary" data-action="send-result" data-id="${i.id}">↑ 发送</button><button class="small ghost" data-action="regenerate" data-id="${i.id}">↻ 重生成</button></div></article>`).join(""):empty("暂无生成结果","✦");}
+function captureResultDrafts(){for(const item of results){const field=document.querySelector(`[data-result-text="${item.id}"]`);if(field)item.text=field.value;}}
+function renderResults(){$("result-count").textContent=results.length+" 条";$("results").innerHTML=results.length?results.map((i,n)=>{const parentIndex=results.findIndex(item=>item.id===i.parentResultId);return `<article class="result-card"><div class="row between"><h3>小剧场指令 ${String(n+1).padStart(2,"0")}</h3><span class="tag">${i.parentResultId?(parentIndex>=0?"重生成自 "+String(parentIndex+1).padStart(2,"0"):"重生成版本"):"可编辑"}</span></div><textarea aria-label="小剧场指令内容" data-result-text="${i.id}">${esc(i.text)}</textarea><div class="actions"><button class="small" data-action="save-result" data-id="${i.id}">☆ 保存</button><button class="small primary" data-action="send-result" data-id="${i.id}">↑ 发送</button><button class="small ghost" data-action="regenerate" data-id="${i.id}">↻ 再生成一版</button><button class="small ghost danger" data-action="delete-result" data-id="${i.id}">删除这条</button></div></article>`;}).join(""):empty("暂无生成结果","✦");}
 async function generateStories(){
   if(!host){toast("请在酒馆内打开本扩展");return;}
   const idea=$("idea").value.trim();if(!idea){toast("先写下你的脑洞");$("idea").focus();return;}
@@ -244,18 +246,16 @@ async function generateStories(){
     const snapshot=await host.snapshot();activeSnapshot=snapshot;
     const request=buildGenerationRequest(),api={...state.api};
     if(batchController.signal.aborted)return;
-    let started=false;
     for(let n=0;n<count;n++){
       if(batchController.signal.aborted)break;
       button.textContent=`✦ 正在生成 ${n+1}/${count}`;
       const output=await host.generate(api,request,snapshot,batchController.signal);
-      for(const item of results){const field=document.querySelector(`[data-result-text="${item.id}"]`);if(field)item.text=field.value;}
-      if(!started){results=[];started=true;}
+      captureResultDrafts();
       results.push({id:uid(),text:output.text,idea,generationRequest:request,savedId:null,sourceIdentity:snapshot.identity});
       renderResults();
       if(output.truncated)toast("已达到输出上限，指令可能不完整；可在 API 设置中提高上限");
     }
-    if(!batchController.signal.aborted)toast(`已生成 ${results.length} 条小剧场指令`);
+    if(!batchController.signal.aborted)toast(`本次新增 ${count} 条指令，旧结果已保留`);
   }catch(e){toast(e.name==="AbortError"?"已停止，完成的指令已保留":"生成失败："+e.message);}
   finally{batchController=null;button.disabled=false;button.textContent="✦ 开始生成";$("stop-generation").hidden=true;}
 }
@@ -264,7 +264,7 @@ async function regenerateResult(id){
   if(!host)return;
   const oldText=resultText(id),button=document.querySelector(`[data-action="regenerate"][data-id="${id}"]`);
   batchController=new AbortController();$("generate-button").disabled=true;$("stop-generation").hidden=false;if(button)button.disabled=true;
-  try{const snapshot=await host.snapshot();if(snapshot.identity!==item.sourceIdentity)throw Error("聊天已切换，请重新生成");const output=await host.generate({...state.api},item.generationRequest,snapshot,batchController.signal);item.text=output.text;const field=document.querySelector(`[data-result-text="${id}"]`);if(field)field.value=output.text;if(output.truncated)toast("已达到输出上限，可在设置中提高上限");else toast("这条指令已重新生成");}
+  try{const snapshot=await host.snapshot();if(snapshot.identity!==item.sourceIdentity)throw Error("聊天已切换，请重新生成");const output=await host.generate({...state.api},item.generationRequest,snapshot,batchController.signal);captureResultDrafts();const index=results.findIndex(i=>i.id===id);results.splice(index+1,0,{...item,id:uid(),text:output.text,savedId:null,parentResultId:id});renderResults();if(output.truncated)toast("新版本已保留，但达到输出上限，可在设置中提高上限");else toast("已新增一版，原指令与编辑内容已保留");}
   catch(e){item.text=oldText;toast(e.name==="AbortError"?"已停止，原指令保留":"重生成失败："+e.message);}
   finally{batchController=null;$("generate-button").disabled=false;$("stop-generation").hidden=true;if(button)button.disabled=false;}
 }
@@ -336,7 +336,7 @@ function validateBackupData(data){
   cleaned.promptPresets=upgradeBuiltInPresets(cleaned.promptPresets);
   if(!cleaned.promptPresets.length)throw Error("至少需要一组提示词预设");
   cleaned.activePresetId=cleaned.promptPresets.some(p=>p.id===data.activePresetId)?data.activePresetId:cleaned.promptPresets[0].id;
-  if(data.builtInAffixesVersion>=2)cleaned.builtInAffixesVersion=2;
+  if(data.builtInAffixesVersion>=2)cleaned.builtInAffixesVersion=Math.min(3,data.builtInAffixesVersion);
   upgradeAffixes(cleaned);
   return cleaned;
 }
@@ -370,6 +370,7 @@ if(action==="delete-group"){if(!confirm("删除这个组合？"))return;state.gr
 if(action==="save-result")saveResult(id);
 if(action==="send-result"){const item=results.find(i=>i.id===id);const raw=resultText(id).trim();if(!raw){toast("指令不能为空");return;}sendStory(composeInstruction(raw,selected),item?.savedId,item?.sourceIdentity);}
 if(action==="regenerate")regenerateResult(id);
+if(action==="delete-result"){if(batchController){toast("请等当前生成完成");return;}captureResultDrafts();results=results.filter(i=>i.id!==id);renderResults();}
 if(action==="filter-tag"){tagFilters[collection]=b.dataset.tag;renderSaved();}
 if(action==="view-saved")openReader(collection,id);
 if(action==="edit-saved")editSaved(collection,id);
