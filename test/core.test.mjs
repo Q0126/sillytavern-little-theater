@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeApiUrl, chatIdentity, collectContext, makeProxyBody, parseCompletion, requestCompletion } from '../core.mjs';
+import { normalizeApiUrl, chatIdentity, collectContext, makeProxyBody, parseCompletion, requestCompletion, parseModels, requestModels, composeInstruction, upgradeAffixes } from '../core.mjs';
 
 function fixture() {
     return {
@@ -92,4 +92,48 @@ test('generation uses the Tavern server with its request headers and propagates 
     assert.equal(actual.options.signal, controller.signal);
     t.mock.method(globalThis, 'fetch', async () => { throw new DOMException('Stopped', 'AbortError'); });
     await assert.rejects(requestCompletion(() => ({ getRequestHeaders: () => ({}) }), { url: 'https://api.example.com', model: 'm' }, { messages: [{ role: 'user', content: '脑洞' }], max_tokens: 128 }, null, '', controller.signal), { name: 'AbortError' });
+});
+
+
+test('model list rejects failures and invalid catalogs while accepting arbitrary model IDs', () => {
+    assert.deepEqual(parseModels({ data: [{ id: 'z/model-2026' }, { id: 'a' }, { id: 'a' }, null, { id: '' }] }), ['a', 'z/model-2026']);
+    assert.throws(() => parseModels({ error: true, data: { data: [] } }), /连接失败/);
+    assert.throws(() => parseModels({ error: { message: 'invalid key' } }, 401), /invalid key/);
+    assert.throws(() => parseModels({ data: [] }), /为空/);
+    assert.throws(() => parseModels({ choices: [] }), /模型列表/);
+});
+
+test('connecting fetches models through Tavern without a chosen model or generating text', async t => {
+    let actual;
+    const signal = new AbortController().signal;
+    t.mock.method(globalThis, 'fetch', async (url, options) => {
+        actual = { url, options };
+        return { status: 200, text: async () => JSON.stringify({ data: [{ id: 'available-model' }] }) };
+    });
+    const models = await requestModels(() => ({ getRequestHeaders: () => ({ 'X-CSRF-Token': 'csrf' }) }), { url: 'https://api.example.com/v1/models' }, 'test-key', signal);
+    assert.deepEqual(models, ['available-model']);
+    assert.equal(actual.url, '/api/backends/chat-completions/status');
+    assert.equal(actual.options.signal, signal);
+    assert.equal(actual.options.headers['X-CSRF-Token'], 'csrf');
+    assert.deepEqual(JSON.parse(actual.options.body), { chat_completion_source: 'openai', reverse_proxy: 'https://api.example.com/v1', proxy_password: 'test-key' });
+    t.mock.method(globalThis, 'fetch', async () => ({ status: 502, text: async () => '<html>bad gateway</html>' }));
+    await assert.rejects(requestModels(() => ({ getRequestHeaders: () => ({}) }), { url: 'https://api.example.com/v1' }, ''), /非 JSON.*502/);
+});
+
+test('affix migration preserves user content and does not restore deleted entries on subsequent loads', () => {
+    const custom = { id: 'custom', name: '自定义', text: '用户自己的内容' };
+    const data = { prefixes: [custom], suffixes: [] };
+    assert.equal(upgradeAffixes(data), true);
+    assert.equal(data.prefixes[0], custom);
+    assert.equal(data.prefixes.length, 2);
+    assert.equal(data.suffixes.length, 3);
+    data.suffixes.splice(0, 1);
+    assert.equal(upgradeAffixes(data), false);
+    assert.equal(data.suffixes.length, 2);
+});
+
+test('sending concatenates ordered affixes without dropping repeated selections or accepting empty instructions', () => {
+    const selected = { prefix: [{ text: '暂停正文' }, { text: '暂停正文' }], suffix: [{ text: '写到结局' }, { text: '字数不限' }] };
+    assert.equal(composeInstruction('  脑洞指令  ', selected), '暂停正文\n\n暂停正文\n\n脑洞指令\n\n写到结局\n\n字数不限');
+    assert.throws(() => composeInstruction(' ', selected), /不能为空/);
 });

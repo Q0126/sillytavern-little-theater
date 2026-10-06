@@ -1,4 +1,4 @@
-import { chatIdentity, collectContext, requestCompletion } from './core.mjs';
+import { chatIdentity, collectContext, requestCompletion, requestModels, upgradeAffixes } from './core.mjs';
 
 const MODULE = 'little_theater_v1';
 const PANEL_URL = new URL('./panel.html', import.meta.url).href;
@@ -193,13 +193,14 @@ async function initialize() {
     context.extensionSettings[MODULE] ||= {};
     settings = context.extensionSettings[MODULE];
     settings.data ||= defaults;
+    if (upgradeAffixes(settings.data)) saveSettings();
     globalThis.LittleTheaterHost = {
         readState, saveState,
         readKey: () => settings.apiKey || '',
         saveKey: key => { settings.apiKey = String(key || ''); saveSettings(); },
         snapshot: () => collectContext(getContext),
         generate: (api, request, snapshot, signal) => requestCompletion(getContext, api, request, snapshot, settings.apiKey, signal),
-        testApi: (api, key) => requestCompletion(getContext, api, { messages: [{ role: 'user', content: 'Reply with OK.' }], max_tokens: 16 }, null, key),
+        connectApi: (api, key, signal) => requestModels(getContext, api, key, signal),
         send, close: hidePanel,
     };
     const container = document.querySelector('#extensions_settings2') || document.querySelector('#extensions_settings');

@@ -6,7 +6,7 @@ export function normalizeApiUrl(input) {
     if (!['http:', 'https:'].includes(url.protocol) || url.search || url.hash || url.username || url.password) {
         throw new Error('API 地址应为 http/https 基础地址，不包含密钥、查询参数或锚点');
     }
-    url.pathname = url.pathname.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+    url.pathname = url.pathname.replace(/\/+$/, '').replace(/\/(?:chat\/completions|models)$/, '');
     return url.toString().replace(/\/+$/, '');
 }
 
@@ -58,7 +58,7 @@ export async function collectContext(getContext) {
 }
 
 export function makeProxyBody(api, request, snapshot, key) {
-    if (!String(api?.model || '').trim()) throw new Error('请在 API 设置中填写模型名称');
+    if (!String(api?.model || '').trim()) throw new Error('请在 API 设置中连接并选择模型');
     if (!Array.isArray(request.messages) || !request.messages.length) throw new Error('生成指令为空');
     if (!Number.isInteger(request.max_tokens) || request.max_tokens < 1 || request.max_tokens > 16000) throw new Error('输出上限无效');
     const messages = request.messages.map(m => ({ role: m.role, content: String(m.content ?? '') }));
@@ -106,4 +106,53 @@ export async function requestCompletion(getContext, api, request, snapshot, key,
     try { data = JSON.parse(text); }
     catch { throw new Error(`酒馆服务器返回了非 JSON 响应（HTTP ${response.status}）`); }
     return parseCompletion(data, response.status);
+}
+
+export function parseModels(data, status = 200) {
+    if (status < 200 || status >= 300 || data?.error) {
+        const message = typeof data?.error === 'string' ? data.error : data?.error?.message;
+        throw new Error(message || (status >= 200 && status < 300 ? 'API 连接失败，请检查地址、密钥与服务状态' : `连接失败（HTTP ${status}），请检查 API 地址、密钥与服务状态`));
+    }
+    if (!Array.isArray(data?.data)) throw new Error('API 未返回模型列表，请确认服务支持 /models 接口');
+    const models = [...new Set(data.data.map(model => model?.id).filter(id => typeof id === 'string' && id.trim()).map(id => id.trim()))];
+    if (!models.length) throw new Error('API 返回的模型列表为空，请检查此密钥可用的模型');
+    return models.sort((a, b) => a.localeCompare(b));
+}
+
+export async function requestModels(getContext, api, key, signal) {
+    const response = await fetch('/api/backends/chat-completions/status', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { ...getContext().getRequestHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_completion_source: 'openai', reverse_proxy: normalizeApiUrl(api.url), proxy_password: String(key || '') }),
+        signal,
+    });
+    let data;
+    try { data = JSON.parse(await response.text()); }
+    catch { throw new Error(`酒馆服务器返回了非 JSON 响应（HTTP ${response.status}）`); }
+    return parseModels(data, response.status);
+}
+
+export function composeInstruction(text, selected) {
+    if (!String(text || '').trim()) throw new Error('指令内容不能为空');
+    return [...(selected.prefix || []).map(i => i.text), String(text).trim(), ...(selected.suffix || []).map(i => i.text)].filter(Boolean).join('\n\n');
+}
+
+const newAffixes = {
+    prefixes: [{ id: 'p-side-story', name: '暂停正文 · 番外', text: '正文剧情暂停，为我生成一则番外。' }],
+    suffixes: [
+        { id: 's-complete-ending', name: '一次性写到结局', text: '请一次性把这则小剧场完整写到结局，不要中途停下或等待下一轮继续。' },
+        { id: 's-unlimited-length', name: '字数不限', text: '字数不限，按剧情需要充分展开。' },
+        { id: 's-no-ooc', name: '禁止 OOC', text: '禁止 OOC，严格保持角色既定性格、经历与人物关系。' },
+    ],
+};
+
+export function upgradeAffixes(data) {
+    if (data.builtInAffixesVersion >= 2) return false;
+    for (const [kind, entries] of Object.entries(newAffixes)) {
+        for (const entry of entries) {
+            if (!data[kind].some(i => i.id === entry.id || i.text === entry.text)) data[kind].push({ ...entry });
+        }
+    }
+    data.builtInAffixesVersion = 2;
+    return true;
 }

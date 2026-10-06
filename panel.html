@@ -28,7 +28,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 .saved-tools{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:8px}.saved-tools button{padding:10px 6px}.preset-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.preset-fields .label{margin-top:12px}.settings-section{margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}.settings-section h3{font-size:16px}.preset-editor{min-height:190px}.import-options{display:grid;gap:10px;margin-top:16px}.import-options label{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer}.import-options input{width:auto;margin-top:5px;accent-color:var(--accent)}.import-options strong{font-size:13px}.import-options small{display:block;color:var(--muted);font-size:11px}.backup-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.backup-stats span{background:var(--card);padding:9px 12px;border-radius:10px;font-size:12px}.backup-status{font-size:12px;color:var(--muted);margin-top:10px}.settings-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.settings-actions button{font-size:12px;padding:8px 11px}
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
-.changelog-button{margin-left:auto;flex:none;white-space:nowrap;font-size:12px;padding:8px 11px;background:var(--panel);color:var(--accent)}.changelog-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}.release-list{margin-top:16px;max-height:52dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}.release-entry{padding:16px 0;border-top:1px solid var(--line)}.release-entry:first-child{padding-top:0;border-top:0}.release-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.release-heading h3{color:var(--accent)}.release-heading time{margin-left:auto;color:var(--muted);font-size:11px}.release-title{font-size:13px;font-weight:600;margin-top:8px}.release-entry ul{margin:9px 0 0;padding-left:19px;font-size:12px;line-height:1.8;color:var(--muted)}.release-entry li+li{margin-top:5px}
+.changelog-button{margin-left:auto;flex:none;white-space:nowrap;font-size:12px;padding:8px 11px;background:var(--panel);color:var(--accent)}.changelog-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}.release-list{margin-top:16px;max-height:52dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}.release-entry{padding:12px 0;border-top:1px solid var(--line)}.release-entry:first-child{padding-top:0;border-top:0}.release-heading{display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 8px;cursor:pointer;list-style:none}.release-heading::-webkit-details-marker{display:none}.release-version{color:var(--accent);font-weight:600}.release-heading::after{content:"＋";grid-column:2;grid-row:2;text-align:right;color:var(--accent)}.release-entry[open]>.release-heading::after{content:"−"}.release-heading time{margin-left:auto;color:var(--muted);font-size:11px}.release-title{font-size:12px;color:var(--muted);grid-column:1;grid-row:2;font-weight:400}.release-entry ul{margin:9px 0 0;padding-left:19px;font-size:12px;line-height:1.8;color:var(--muted)}.release-entry li+li{margin-top:5px}
 </style>
 </head>
 <body>
@@ -51,9 +51,9 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
         <div class="new-affix-actions"><button data-add="prefix">＋ 写前缀并保存</button><button data-add="suffix">＋ 写后缀并保存</button></div>
         <div class="library-launchers"><button data-picker="prefix">前缀库<small id="prefix-total"></small></button><button data-picker="suffix">后缀库<small id="suffix-total"></small></button><button data-picker="group">组合库<small id="group-total"></small></button></div>
         <details class="chosen-details"><summary id="selection-summary">已添加：前缀 0 条 · 后缀 0 条</summary><div class="row between" style="margin-top:12px"><span class="note">按下方顺序拼接</span><button class="small ghost" id="clear-selected">清空本次</button></div><label class="label">前缀</label><div id="prefix-selected" class="stack"></div><label class="label">后缀</label><div id="suffix-selected" class="stack"></div></details>
-        <details style="margin-top:14px"><summary>查看本次完整指令</summary><div id="prompt-preview" class="preview"></div></details>
+        <details style="margin-top:14px"><summary>查看 AI 生成请求</summary><div id="prompt-preview" class="preview"></div></details>
       </div>
-    </div><div class="panel"><div class="row between title"><h2>生成的指令</h2><span id="result-count" class="muted">0 条</span></div><div id="results" class="results"></div></div></div>
+    </div><div class="panel"><div class="row between title"><h2>生成的指令</h2><span id="result-count" class="muted">0 条</span></div><p class="note" style="margin-bottom:12px">AI 只整理脑洞；保存与发送时按前缀、脑洞指令、后缀拼接。</p><div id="results" class="results"></div></div></div>
   </section>
   <section id="page-saved" class="page">
     <div class="panel">
@@ -76,8 +76,10 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
     <h2>API 设置</h2><p class="note" style="margin-top:8px">填写 OpenAI 兼容的 Chat Completions API。请求通过当前酒馆服务器发送，独立使用下方的小剧场指令预设。</p>
     <label class="label" for="api-url">API 地址</label><input id="api-url" placeholder="https://你的地址/v1" autocomplete="off">
     <label class="label" for="api-key">API 密钥</label><input id="api-key" type="password" autocomplete="off" placeholder="输入 API Key"><p class="note" style="margin-top:6px">密钥保存在当前酒馆用户设置中，不随备份导出。</p>
-    <label class="label" for="api-model">模型名称</label><input id="api-model" placeholder="填写要使用的模型">
-    <div class="actions"><button id="save-api" class="primary">保存设置</button><button id="test-api">测试连接</button></div>
+    <div class="actions"><button id="connect-api" class="primary">连接 API</button></div>
+    <p id="api-status" class="note" role="status" aria-live="polite" style="margin-top:10px">连接后选择可用模型</p>
+    <label class="label" for="api-model">选择模型</label><select id="api-model" disabled><option value="">请先连接 API</option></select>
+    <div class="actions"><button id="save-api" class="primary" disabled>保存设置</button></div>
     <div class="settings-section">
       <h3>小剧场指令生成预设</h3><p class="note" style="margin-top:8px">根据脑洞生成可发送的创作指令，发送后再由酒馆角色演出。自动读取角色卡、用户设定与最近 20 条聊天，使用这里的独立预设。</p>
       <label class="label" for="prompt-preset">正在使用</label><select id="prompt-preset"></select>
@@ -117,6 +119,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 <dialog id="send-dialog"><div class="row between"><h2>发送预览</h2><button type="button" class="icon" data-close="send-dialog" aria-label="关闭">✕</button></div><p class="note" style="margin-top:12px">以下指令会通过酒馆的用户发送键发出。</p><textarea id="send-text" readonly aria-label="待发送正文" style="margin-top:14px"></textarea><div class="dialog-actions"><button data-close="send-dialog">关闭</button><button class="primary" id="copy-send">复制正文</button></div></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script type="module">
+import { composeInstruction, upgradeAffixes } from "./core.mjs";
 import { THEME_VARIABLES, validateThemeCatalog, themeSignature, makeThemeFile, parseThemeFile } from "./theme-core.js";
 "use strict";
 const $=id=>document.getElementById(id);
@@ -126,14 +129,17 @@ const storageKey="little-theater-ui-v1";
 const host=window.parent!==window?window.parent.LittleTheaterHost:null;
 let batchController=null,activeSnapshot=null;
 const legacyBuiltInPrompt="你是小剧场作者。根据给定的角色资料、用户设定、相关聊天与本次脑洞，写一篇简短完整的小剧场。保持人物性格与关系一致，不擅自改变人物设定。围绕本次情境展开，使用自然的动作、对话和少量必要的环境描写。只输出故事正文，不要输出思考过程、创作说明、总结、状态栏、手机面板或额外的 HTML，除非本次脑洞明确要求。不要复述输入指令或大段重复已有聊天。";
-const builtInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。前缀、后缀里的创作要求应保留或自然融入最终指令，交给酒馆角色执行，不在本次生成中直接演出。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
-function upgradeBuiltInPresets(items){return items.map(p=>p.systemPrompt===legacyBuiltInPrompt?{...p,systemPrompt:builtInPrompt,name:p.name==="简短小剧场"?"小剧场指令生成":p.name}:p);}
+const previousBuiltInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。前缀、后缀里的创作要求应保留或自然融入最终指令，交给酒馆角色执行，不在本次生成中直接演出。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
+const builtInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。仅根据用户本次输入的脑洞整理指令，不读取、改写或补入前缀和后缀；前后缀由界面在发送时单独拼接。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
+function upgradeBuiltInPresets(items){return items.map(p=>[legacyBuiltInPrompt,previousBuiltInPrompt].includes(p.systemPrompt)?{...p,systemPrompt:builtInPrompt,name:p.name==="简短小剧场"?"小剧场指令生成":p.name}:p);}
 const defaultPreset=()=>({id:"builtin-short",name:"小剧场指令生成",systemPrompt:builtInPrompt,targetWords:300,maxTokens:1024});
 
 const palettes={day:[{id:"cream",name:"奶油手账",note:"暖白 · 焦糖",bg:"#f4efe5",card:"#fffcf5",accent:"#8a6945",soft:"#e9dac6"},{id:"sakura",name:"浅樱花笺",note:"樱粉 · 玫瑰",bg:"#f6edf1",card:"#fffbfd",accent:"#a46385",soft:"#eed4e1"},{id:"mint",name:"青柠纸页",note:"浅绿 · 橄榄",bg:"#eef3e9",card:"#fcfff7",accent:"#607f48",soft:"#dae8ce"},{id:"sky",name:"晴空来信",note:"雾蓝 · 天青",bg:"#edf3f8",card:"#fbfdff",accent:"#527fa6",soft:"#d5e5f2"}],night:[{id:"violet",name:"夜紫微光",note:"墨紫 · 薰衣草",bg:"#171820",card:"#292a36",accent:"#c9b5ff",soft:"#332b44"},{id:"rose",name:"暮色玫瑰",note:"烟粉 · 莓紫",bg:"#231a20",card:"#3b2c35",accent:"#f0b5ce",soft:"#503343"},{id:"forest",name:"松林夜语",note:"深绿 · 鼠尾草",bg:"#16201d",card:"#2a3932",accent:"#b4d9b0",soft:"#354b37"},{id:"ocean",name:"深海星光",note:"藏蓝 · 冰蓝",bg:"#131e29",card:"#26384a",accent:"#add6f5",soft:"#304b62"}]};
 const defaults=()=>({prefixes:[{id:"p1",name:"人物不跑偏",text:"依据角色的性格、经历与关系描写人物，保持行为和语言的一致性。"},{id:"p2",name:"细腻叙事",text:"使用细腻、自然的叙事，借助动作、对话和环境表现情绪。"}],suffixes:[{id:"s1",name:"完整短篇",text:"写成有起承转合的完整小剧场，不要只给出大纲。"},{id:"s2",name:"开放结尾",text:"结尾留下可以继续发展的余地，不要用总结句收束。"},{id:"s3",name:"只输出正文",text:"只输出故事正文，不要解释创作过程。"}],groups:[],saved:[],replies:[],theme:"violet",api:{url:"",model:""}});
 let state;
 try{const cached=host?host.readState():JSON.parse(localStorage.getItem(storageKey)||"null");state=cached&&["prefixes","suffixes","groups","saved"].every(k=>Array.isArray(cached[k]))?cached:defaults();}catch{state=defaults();}
+const initialStateBeforeUpgrade=JSON.stringify(state);
+upgradeAffixes(state);
 if(!Array.isArray(state.replies))state.replies=[];
 if(!["day","night"].includes(state.mode))state.mode=["cream","sakura","mint","sky"].includes(state.theme)?"day":"night";
 function reservedThemeIds(){return Object.values(palettes).flat().map(p=>p.id);}
@@ -157,10 +163,10 @@ function empty(text,symbol="✧"){return `<div class="empty"><div class="symbol"
 function source(kind){return kind==="prefix"?state.prefixes:state.suffixes;}
 function switchTab(name){document.querySelectorAll(".tabs button").forEach(b=>{b.classList.toggle("active",b.dataset.tab===name);if(b.dataset.tab===name)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));}
 function switchCollection(name){collection=name;document.querySelectorAll("[data-collection]").forEach(b=>b.classList.toggle("active",b.dataset.collection===name));renderSaved();}
-function buildPrompt(){return [...selected.prefix.map(i=>i.text),$("idea").value.trim(),...selected.suffix.map(i=>i.text)].filter(Boolean).join("\n\n");}
+function buildPrompt(){return $("idea").value.trim();}
 function activePreset(){return state.promptPresets.find(p=>p.id===state.activePresetId)||state.promptPresets[0];}
 function buildGenerationRequest(){const p=activePreset();return {model:state.api.model||"",messages:[{role:"system",content:p.systemPrompt+`\n\n篇幅要求：本次生成的创作指令以约 ${p.targetWords} 字为目标，简洁明确，保留必要情境与要求。这是指令本身的长度，不是最终小剧场正文的字数。`},{role:"user",content:buildPrompt()}],max_tokens:p.maxTokens};}
-function updatePreview(){const request=buildGenerationRequest();$("prompt-preview").textContent=`【小剧场指令生成预设：${activePreset().name}】\n${request.messages[0].content}\n\n【本次脑洞与前后缀】\n${request.messages[1].content||"尚未添加内容"}\n\n输出上限：${request.max_tokens} token`;}
+function updatePreview(){const request=buildGenerationRequest();$("prompt-preview").textContent=`【小剧场指令生成预设：${activePreset().name}】\n${request.messages[0].content}\n\n【本次脑洞】\n${request.messages[1].content||"尚未添加内容"}\n\n输出上限：${request.max_tokens} token`;}
 function renderPresets(){const p=activePreset();$("prompt-preset").innerHTML=state.promptPresets.map(i=>`<option value="${esc(i.id)}">${esc(i.name)}</option>`).join("");$("prompt-preset").value=p.id;$("preset-name").value=p.name;$("preset-system").value=p.systemPrompt;$("preset-words").value=p.targetWords;$("preset-tokens").value=p.maxTokens;$("delete-preset").disabled=state.promptPresets.length<=1;updatePreview();}
 function savePreset(announce=true){const p=activePreset(),name=$("preset-name").value.trim(),systemPrompt=$("preset-system").value.trim(),targetWords=Number($("preset-words").value),maxTokens=Number($("preset-tokens").value);if(!name||!systemPrompt){toast("请填写预设名称和提示词");return false;}if(!Number.isInteger(targetWords)||targetWords<50||targetWords>10000||!Number.isInteger(maxTokens)||maxTokens<128||maxTokens>16000){toast("字数范围为 50–10000，输出上限范围为 128–16000 token");return false;}Object.assign(p,{name,systemPrompt,targetWords,maxTokens});if(!persist())return false;renderPresets();if(announce)toast("提示词预设已保存并使用");return true;}
 
@@ -224,7 +230,7 @@ async function generateStories(){
   try{
     button.textContent="✦ 正在读取角色…";
     const snapshot=await host.snapshot();activeSnapshot=snapshot;
-    const request=buildGenerationRequest(),api={...state.api},affixes={prefix:selected.prefix.map(i=>({...i})),suffix:selected.suffix.map(i=>({...i}))};
+    const request=buildGenerationRequest(),api={...state.api};
     if(batchController.signal.aborted)return;
     let started=false;
     for(let n=0;n<count;n++){
@@ -233,7 +239,7 @@ async function generateStories(){
       const output=await host.generate(api,request,snapshot,batchController.signal);
       for(const item of results){const field=document.querySelector(`[data-result-text="${item.id}"]`);if(field)item.text=field.value;}
       if(!started){results=[];started=true;}
-      results.push({id:uid(),text:output.text,idea,affixes,generationRequest:request,savedId:null,sourceIdentity:snapshot.identity});
+      results.push({id:uid(),text:output.text,idea,generationRequest:request,savedId:null,sourceIdentity:snapshot.identity});
       renderResults();
       if(output.truncated)toast("已达到输出上限，指令可能不完整；可在 API 设置中提高上限");
     }
@@ -252,7 +258,7 @@ async function regenerateResult(id){
 }
 // 正式插件接入点：生成时通过酒馆上下文读取角色卡、用户设定与最近聊天，调用配置的 API。
 function resultText(id){return document.querySelector(`[data-result-text="${id}"]`)?.value||"";}
-function saveResult(id){const result=results.find(i=>i.id===id),text=resultText(id).trim();if(!result||!text){toast("正文不能为空");return;}const existing=state.saved.find(i=>i.id===result.savedId);if(existing){existing.text=text;existing.updated=Date.now();}else{result.savedId=uid();state.saved.unshift({id:result.savedId,title:result.idea.slice(0,36)||"未命名小剧场指令",text,created:Date.now(),updated:Date.now()});}if(persist())toast(existing?"已更新小剧场指令":"小剧场指令已保存");renderSaved();}
+function saveResult(id){const result=results.find(i=>i.id===id),raw=resultText(id).trim();if(!result||!raw){toast("指令不能为空");return;}const text=composeInstruction(raw,selected);const existing=state.saved.find(i=>i.id===result.savedId);if(existing){existing.text=text;existing.updated=Date.now();}else{result.savedId=uid();state.saved.unshift({id:result.savedId,title:result.idea.slice(0,36)||"未命名小剧场指令",text,created:Date.now(),updated:Date.now()});}if(persist())toast(existing?"已更新小剧场指令":"小剧场指令已保存");renderSaved();}
 async function sendStory(text,storyId=null,sourceIdentity=null){
   if(!text.trim()){toast("指令内容不能为空");return;}if(!host){toast("请在酒馆内发送");return;}
   const buttons=document.querySelectorAll('[data-action="send-result"],[data-action="send-saved"]');buttons.forEach(b=>b.disabled=true);
@@ -283,6 +289,8 @@ function validateBackupData(data){
   cleaned.promptPresets=upgradeBuiltInPresets(cleaned.promptPresets);
   if(!cleaned.promptPresets.length)throw Error("至少需要一组提示词预设");
   cleaned.activePresetId=cleaned.promptPresets.some(p=>p.id===data.activePresetId)?data.activePresetId:cleaned.promptPresets[0].id;
+  if(data.builtInAffixesVersion>=2)cleaned.builtInAffixesVersion=2;
+  upgradeAffixes(cleaned);
   return cleaned;
 }
 function makeBackup(){return{app:"little-theater",version:1,exportedAt:new Date().toISOString(),data:validateBackupData(state)};}
@@ -301,7 +309,7 @@ function mergeBackup(base,incoming){
 }
 function exportBackup(){try{const backup=makeBackup(),blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="little-theater-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);$("backup-status").textContent="备份下载已发起，文件不含 API 密钥。";toast("备份下载已发起");}catch(e){toast("导出失败："+e.message);}}
 async function prepareImport(file){if(!file)return;if(file.size>20*1024*1024){toast("备份文件不能超过 20 MB");return;}try{const text=typeof file.text==="function"?await file.text():await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error("无法读取文件"));reader.readAsText(file,"UTF-8");});pendingImport=parseBackup(text);$("import-file-name").textContent=file.name;$("import-stats").innerHTML=[["前缀",pendingImport.prefixes.length],["后缀",pendingImport.suffixes.length],["组合",pendingImport.groups.length],["小剧场",pendingImport.saved.length],["角色回复",pendingImport.replies.length],["提示词预设",pendingImport.promptPresets.length]].map(([name,count])=>`<span>${name} · ${count}</span>`).join("");document.querySelector('[name="import-mode"][value="merge"]').checked=true;$("import-dialog").showModal();}catch(e){pendingImport=null;toast("导入失败："+e.message);}}
-function confirmImport(){if(!pendingImport)return;const mode=document.querySelector('[name="import-mode"]:checked')?.value||"merge";let candidate;try{candidate=mode==="replace"?pendingImport:mergeBackup(state,pendingImport);if(host){if(mode==="replace")host.saveKey("");host.saveState(candidate);}else localStorage.setItem(storageKey,JSON.stringify(candidate));}catch(e){toast("导入未完成："+e.message);return;}state=candidate;pendingImport=null;$("import-dialog").close();if(mode==="replace"){selected={prefix:[],suffix:[]};results=[];$("idea").value="";$("api-key").value="";}$("api-url").value=state.api.url;$("api-model").value=state.api.model;$("saved-search").value="";renderAppearance();renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();$("backup-status").textContent=mode==="replace"?"已从备份恢复内容与设置。":"已合并备份，保留现有设置。";toast(mode==="replace"?"备份已恢复":"备份已合并导入");}
+function confirmImport(){if(!pendingImport)return;const mode=document.querySelector('[name="import-mode"]:checked')?.value||"merge";let candidate;try{candidate=mode==="replace"?pendingImport:mergeBackup(state,pendingImport);if(host){if(mode==="replace")host.saveKey("");host.saveState(candidate);}else localStorage.setItem(storageKey,JSON.stringify(candidate));}catch(e){toast("导入未完成："+e.message);return;}state=candidate;pendingImport=null;$("import-dialog").close();if(mode==="replace"){selected={prefix:[],suffix:[]};results=[];$("idea").value="";$("api-key").value="";}initializeApiForm();$("saved-search").value="";renderAppearance();renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();$("backup-status").textContent=mode==="replace"?"已从备份恢复内容与设置。":"已合并备份，保留现有设置。";toast(mode==="replace"?"备份已恢复":"备份已合并导入");}
 
 async function copyText(text){if(!text.trim()){toast("正文不能为空");return;}try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);}else{const field=document.createElement("textarea");field.value=text;field.style.cssText="position:fixed;left:-9999px;top:0";const host=Array.from(document.querySelectorAll("dialog[open]")).pop()||document.body;host.appendChild(field);field.select();const ok=document.execCommand("copy");field.remove();if(!ok)throw new Error("copy failed");}toast("正文已复制");}catch{toast("此浏览器不支持一键复制，请长按正文手动复制");}}
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;if(b.dataset.close){$(b.dataset.close).close();return;}if(b.dataset.tab){switchTab(b.dataset.tab);return;}if(b.dataset.collection){switchCollection(b.dataset.collection);return;}if(b.dataset.mode){state.mode=b.dataset.mode;renderAppearance();persist();return;}if(b.dataset.palette){state.appearance[state.mode]=b.dataset.palette;renderAppearance();persist();$("appearance-dialog").close();return;}if(b.dataset.picker){openPicker(b.dataset.picker);return;}if(b.dataset.library){switchLibrary(b.dataset.library);return;}if(b.dataset.add){openEditor(b.dataset.add);return;}const {action,kind,id}=b.dataset,index=Number(b.dataset.index);
@@ -312,7 +320,7 @@ if(action==="edit-entry")openEditor(kind,id);
 if(action==="delete-entry"){if(!confirm("删除这条前后缀？保存的组合仍保留原内容。"))return;const list=source(kind),n=list.findIndex(i=>i.id===id);if(n>=0)list.splice(n,1);persist();renderSelection();renderLibrary();}
 if(action==="delete-group"){if(!confirm("删除这个组合？"))return;state.groups=state.groups.filter(i=>i.id!==id);persist();renderSelection();renderLibrary();}
 if(action==="save-result")saveResult(id);
-if(action==="send-result"){const item=results.find(i=>i.id===id);sendStory(resultText(id),item?.savedId,item?.sourceIdentity);}
+if(action==="send-result"){const item=results.find(i=>i.id===id);const raw=resultText(id).trim();if(!raw){toast("指令不能为空");return;}sendStory(composeInstruction(raw,selected),item?.savedId,item?.sourceIdentity);}
 if(action==="regenerate")regenerateResult(id);
 if(action==="edit-reply")openReply(id);
 if(action==="update-saved"){const item=(collection==="stories"?state.saved:state.replies).find(i=>i.id===id);if(!item)return;const title=document.querySelector(`[data-saved-title="${id}"]`).value.trim(),text=savedText(id).trim();if(!title||!text){toast("标题和正文不能为空");return;}Object.assign(item,{title,text,updated:Date.now()});if(persist())toast("修改已保存");}
@@ -341,7 +349,7 @@ async function openChangelog(){
   if(data?.app!=="little-theater-changelog"||data.version!==1||!Array.isArray(data.releases)||!data.releases.length||data.releases.length>100)throw Error("更新日志格式无效");
   for(const release of data.releases){if(typeof release.version!=="string"||typeof release.date!=="string"||typeof release.title!=="string"||!Array.isArray(release.changes)||release.changes.some(item=>typeof item!=="string"))throw Error("更新日志条目无效");}
   $("changelog-version").textContent="当前版本 · "+data.releases[0].version;
-  $("changelog-content").innerHTML=data.releases.map((release,index)=>`<article class="release-entry"><div class="release-heading"><h3>v${esc(release.version)}</h3>${index===0?'<span class="tag">当前版本</span>':""}<time>${esc(release.date)}</time></div><p class="release-title">${esc(release.title)}</p><ul>${release.changes.map(item=>`<li>${esc(item)}</li>`).join("")}</ul></article>`).join("");
+  $("changelog-content").innerHTML=data.releases.map((release,index)=>`<details class="release-entry"><summary class="release-heading"><span class="release-version">v${esc(release.version)}${index===0?' · 最新':""}</span><time>${esc(release.date)}</time><span class="release-title">${esc(release.title)}</span></summary><ul>${release.changes.map(item=>`<li>${esc(item)}</li>`).join("")}</ul></details>`).join("");
  }catch(e){changelogPromise=null;$("changelog-version").textContent="暂时无法读取版本";$("changelog-content").textContent=e.message+"，可点击重新加载。";$("retry-changelog").hidden=false;}
 }
 $("open-changelog").onclick=openChangelog;$("retry-changelog").onclick=openChangelog;
@@ -352,15 +360,49 @@ $("detail-add").onclick=()=>{if(!detailItem)return;const {kind,id}=detailItem;ki
 $("detail-edit").onclick=()=>{if(!detailItem)return;const {kind,id}=detailItem;$("detail-dialog").close();openEditor(kind,id);};
 $("detail-delete").onclick=()=>{if(!detailItem)return;const {kind,id}=detailItem;if(!confirm(kind==="group"?"删除这个组合？":"删除这条前后缀？已添加的内容和保存的组合仍会保留。"))return;if(kind==="group")state.groups=state.groups.filter(i=>i.id!==id);else{const list=source(kind),n=list.findIndex(i=>i.id===id);if(n>=0)list.splice(n,1);}persist();$("detail-dialog").close();renderSelection();renderLibrary();};
 renderAppearance();
-$("api-url").value=state.api.url||"";$("api-model").value=state.api.model||"";$("api-key").value=host?.readKey()||"";
-$("save-api").onclick=()=>{state.api={url:$("api-url").value.trim(),model:$("api-model").value.trim()};if(persist()){host?.saveKey($("api-key").value.trim());toast("API 设置已保存");}};
-$("test-api").onclick=async()=>{if(!host){toast("请在酒馆内测试连接");return;}const b=$("test-api");b.disabled=true;b.textContent="正在测试…";try{await host.testApi({url:$("api-url").value.trim(),model:$("api-model").value.trim()},$("api-key").value.trim());toast("连接成功，模型已返回内容");}catch(e){toast("连接失败："+e.message);}finally{b.disabled=false;b.textContent="测试连接";}};
+let apiConnection=null,apiConnectController=null,apiConnectSerial=0;
+function apiFingerprint(){return JSON.stringify([$("api-url").value.trim(),$("api-key").value.trim()]);}
+function invalidateApiConnection(){
+ ++apiConnectSerial;apiConnectController?.abort();apiConnectController=null;apiConnection=null;
+ $("api-model").innerHTML='<option value="">请先连接 API</option>';$("api-model").disabled=true;$("save-api").disabled=true;
+ $("api-status").textContent="地址或密钥已变更，请重新连接";$("connect-api").disabled=false;$("connect-api").textContent="连接 API";
+}
+function initializeApiForm(){
+ invalidateApiConnection();$("api-url").value=state.api.url||"";$("api-key").value=host?.readKey()||"";
+ const model=state.api.model||"";
+ if(model){$("api-model").innerHTML=`<option value="${esc(model)}">${esc(model)}（已保存）</option>`;$("api-model").disabled=false;apiConnection={fingerprint:apiFingerprint(),models:[model]};$("save-api").disabled=false;}
+ $("api-status").textContent=model?"使用已保存的模型；连接可重新获取模型列表":"连接后选择可用模型";
+}
+$("api-url").oninput=invalidateApiConnection;$("api-key").oninput=invalidateApiConnection;
+$("api-model").onchange=()=>{$("save-api").disabled=!apiConnection||apiConnection.fingerprint!==apiFingerprint()||!apiConnection.models.includes($("api-model").value);};
+$("connect-api").onclick=async()=>{
+ if(!host){toast("请在酒馆内连接 API");return;}
+ const oldModel=$("api-model").value;
+ invalidateApiConnection();const serial=apiConnectSerial,fingerprint=apiFingerprint(),controller=new AbortController();apiConnectController=controller;
+ const button=$("connect-api");button.disabled=true;button.textContent="正在连接…";$("api-status").textContent="正在获取模型列表…";
+ const timeout=setTimeout(()=>controller.abort(),30000);
+ try{
+  const models=await host.connectApi({url:$("api-url").value.trim()},$("api-key").value.trim(),controller.signal);
+  if(serial!==apiConnectSerial||fingerprint!==apiFingerprint()||controller.signal.aborted)return;
+  apiConnection={fingerprint,models};$("api-model").innerHTML='<option value="">请选择模型</option>'+models.map(model=>`<option value="${esc(model)}">${esc(model)}</option>`).join("");$("api-model").disabled=false;
+  $("api-model").value=models.includes(oldModel)?oldModel:"";$("api-model").onchange();$("api-status").textContent=`连接成功，找到 ${models.length} 个模型。选择后保存。`;
+ }catch(e){if(serial===apiConnectSerial){$("api-status").textContent=e.name==="AbortError"?"连接超时，请重试":"连接失败："+e.message;}}
+ finally{clearTimeout(timeout);if(serial===apiConnectSerial){apiConnectController=null;button.disabled=false;button.textContent="连接 API";}}
+};
+$("save-api").onclick=()=>{
+ const model=$("api-model").value;
+ if(!apiConnection||apiConnection.fingerprint!==apiFingerprint()||!apiConnection.models.includes(model)){toast("请先连接并选择模型");return;}
+ const previousApi=state.api,previousKey=host?.readKey()||"";
+ try{host?.saveKey($("api-key").value.trim());state.api={url:$("api-url").value.trim(),model};if(!persist()){state.api=previousApi;host?.saveKey(previousKey);return;}updatePreview();$("api-status").textContent="已保存 · "+model;toast("API 设置已保存");}catch(e){state.api=previousApi;host?.saveKey(previousKey);toast("保存失败："+e.message);}
+};
+initializeApiForm();
 window.LittleTheaterUI={receiveState(data){
  const drafts=Array.from(document.querySelectorAll('[data-saved-text]')).map(field=>({id:field.dataset.savedText,text:field.value,title:document.querySelector(`[data-saved-title="${field.dataset.savedText}"]`)?.value}));
- state=data;initializeAppearance(state);renderAppearance();if(!state.promptPresets?.length)state.promptPresets=[defaultPreset()];state.promptPresets=upgradeBuiltInPresets(state.promptPresets);if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
+ state=data;upgradeAffixes(state);initializeAppearance(state);renderAppearance();if(!state.promptPresets?.length)state.promptPresets=[defaultPreset()];state.promptPresets=upgradeBuiltInPresets(state.promptPresets);if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
  renderSaved();for(const draft of drafts){const field=document.querySelector(`[data-saved-text="${draft.id}"]`),title=document.querySelector(`[data-saved-title="${draft.id}"]`);if(field)field.value=draft.text;if(title&&draft.title!==undefined)title.value=draft.title;}
 }};
 renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();
+if(JSON.stringify(state)!==initialStateBeforeUpgrade)persist();
 </script>
 </body>
 </html>
