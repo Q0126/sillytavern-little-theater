@@ -2,7 +2,7 @@ import { chatIdentity, collectContext, requestCompletion } from './core.mjs';
 
 const MODULE = 'little_theater_v1';
 const PANEL_URL = new URL('./panel.html', import.meta.url).href;
-let shell, frame, settings, sending = false, tavernBusy = false, observer;
+let shell, frame, settings, sending = false, tavernBusy = false, observer, scrollLock;
 const clone = value => JSON.parse(JSON.stringify(value));
 const getContext = () => SillyTavern.getContext();
 const notify = (type, text) => globalThis.toastr?.[type]?.(text, '脑洞小剧场');
@@ -12,10 +12,29 @@ function synchronizePanel() { frame?.contentWindow?.LittleTheaterUI?.receiveStat
 function readState() { return clone(settings.data); }
 function saveState(data) { settings.data = clone(data); saveSettings(); }
 
+function lockBackgroundScroll() {
+    if (scrollLock) return;
+    scrollLock = [document.documentElement, document.body].map(element => ({
+        element,
+        value: element.style.getPropertyValue('overflow'),
+        priority: element.style.getPropertyPriority('overflow'),
+    }));
+    scrollLock.forEach(({ element }) => element.style.setProperty('overflow', 'hidden', 'important'));
+}
+function unlockBackgroundScroll() {
+    scrollLock?.forEach(({ element, value, priority }) => {
+        if (value) element.style.setProperty('overflow', value, priority);
+        else element.style.removeProperty('overflow');
+    });
+    scrollLock = undefined;
+}
+
 function showPanel() {
     if (!shell) {
-        shell = document.createElement('div');
+        shell = document.createElement('dialog');
+        shell.id = 'lt-dialog';
         shell.className = 'lt-shell';
+        shell.hidden = true;
         shell.setAttribute('role', 'dialog');
         shell.setAttribute('aria-label', '脑洞小剧场');
         shell.setAttribute('aria-modal', 'true');
@@ -26,23 +45,50 @@ function showPanel() {
         const title = document.createElement('span');
         title.textContent = '脑洞小剧场';
         const close = document.createElement('button');
-        close.textContent = '返回聊天 ×';
+        close.type = 'button';
+        close.className = 'lt-close';
+        close.textContent = '关闭 ×';
+        close.setAttribute('aria-label', '关闭脑洞小剧场');
         close.onclick = hidePanel;
         bar.append(title, close);
         frame = document.createElement('iframe');
+        frame.id = 'lt-panel-frame';
         frame.src = PANEL_URL;
         frame.title = '脑洞小剧场面板';
         frame.setAttribute('allow', 'clipboard-write');
         frame.onload = synchronizePanel;
         pane.append(bar, frame);
         shell.append(pane);
-        shell.addEventListener('click', e => { if (e.target === shell) hidePanel(); });
+        shell.addEventListener('click', e => {
+            if (e.target !== shell) return;
+            const bounds = shell.getBoundingClientRect();
+            if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) hidePanel();
+        });
+        shell.addEventListener('cancel', e => { e.preventDefault(); hidePanel(); });
+        shell.addEventListener('close', () => {
+            if (shell.open) return;
+            shell.hidden = true;
+            unlockBackgroundScroll();
+        });
         document.body.append(shell);
     }
+    if (shell.open) { synchronizePanel(); return; }
     shell.hidden = false;
+    try {
+        shell.showModal();
+        lockBackgroundScroll();
+    } catch (error) {
+        shell.hidden = true;
+        notify('error', '无法打开小剧场弹窗：' + error.message);
+        return;
+    }
     synchronizePanel();
 }
-function hidePanel() { if (shell) shell.hidden = true; }
+function hidePanel() {
+    if (shell?.open) shell.close();
+    if (shell) shell.hidden = true;
+    unlockBackgroundScroll();
+}
 
 async function send(text, storyId, sourceIdentity) {
     if (sending || tavernBusy) throw new Error('酒馆正在生成或发送，请等当前回复完成');
@@ -168,12 +214,23 @@ async function initialize() {
     }
     const wand = document.querySelector('#extensionsMenu');
     if (wand) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'lt-wand-container';
+        wrapper.className = 'extension_container';
         const item = document.createElement('div');
+        item.id = 'lt-menu-item';
         item.className = 'list-group-item flex-container flexGap5 interactable';
         item.setAttribute('role', 'button'); item.tabIndex = 0;
-        item.textContent = '✦ 脑洞小剧场'; item.onclick = showPanel;
+        const icon = document.createElement('div');
+        icon.className = 'fa-solid fa-masks-theater extensionsMenuExtensionButton';
+        icon.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = '脑洞小剧场';
+        item.append(icon, label);
+        item.onclick = showPanel;
         item.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPanel(); } };
-        wand.append(item);
+        wrapper.append(item);
+        wand.append(wrapper);
     }
     context.eventSource.on(context.eventTypes.GENERATION_STARTED, (_type, _options, dryRun) => { if (!dryRun) tavernBusy = true; });
     context.eventSource.on(context.eventTypes.GENERATION_ENDED, () => { tavernBusy = false; installBookmarks(); });
