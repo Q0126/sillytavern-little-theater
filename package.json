@@ -1,0 +1,6 @@
+{
+  "name": "sillytavern-little-theater",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test/*.test.mjs" }
+}
