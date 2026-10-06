@@ -1,7 +1,8 @@
 import { chatIdentity, collectContext, requestCompletion, requestModels, upgradeAffixes } from './core.mjs';
+import { upgradeUserData } from './data-core.js';
 
 const MODULE = 'little_theater_v1';
-const PANEL_URL = new URL('./panel.html', import.meta.url).href;
+const PANEL_URL = new URL('./panel.html?v=1.3.0', import.meta.url).href;
 let shell, frame, settings, sending = false, tavernBusy = false, observer, scrollLock;
 const clone = value => JSON.parse(JSON.stringify(value));
 const getContext = () => SillyTavern.getContext();
@@ -156,6 +157,7 @@ function collectReply(index) {
         title: role + ' · ' + text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 24),
         text,
         role,
+        tags: [],
         storyId: settings.lastStoryByChat?.[chatIdentity(context)] || '',
         created: Date.now(), updated: Date.now(),
     });
@@ -194,10 +196,24 @@ async function initialize() {
     settings = context.extensionSettings[MODULE];
     settings.data ||= defaults;
     if (upgradeAffixes(settings.data)) saveSettings();
+    settings.profileKeys ||= {};
+    if (upgradeUserData(settings.data)) settings.profileKeys['api-legacy'] = settings.apiKey || '';
+    saveSettings();
     globalThis.LittleTheaterHost = {
         readState, saveState,
         readKey: () => settings.apiKey || '',
         saveKey: key => { settings.apiKey = String(key || ''); saveSettings(); },
+        readProfileKey: id => Object.hasOwn(settings.profileKeys, id) ? settings.profileKeys[id] : '',
+        saveProfileKey: (id, key) => {
+            if (!/^[A-Za-z0-9_-]{1,120}$/.test(id) || ['__proto__', 'constructor', 'prototype'].includes(id)) throw Error('配置编号无效');
+            settings.profileKeys[id] = String(key || ''); settings.apiKey = String(key || ''); saveSettings();
+        },
+        removeProfileKey: id => { delete settings.profileKeys[id]; saveSettings(); },
+        clearProfileKeys: () => { settings.profileKeys = {}; settings.apiKey = ''; saveSettings(); },
+        formatReply: (text, role) => {
+            const formatter = getContext().messageFormatting;
+            return typeof formatter === 'function' ? formatter(text, role || '', false, false, -1) : null;
+        },
         snapshot: () => collectContext(getContext),
         generate: (api, request, snapshot, signal) => requestCompletion(getContext, api, request, snapshot, settings.apiKey, signal),
         connectApi: (api, key, signal) => requestModels(getContext, api, key, signal),

@@ -73,5 +73,7 @@
   ],
   "activePresetId": "builtin-short",
   "customThemes": [],
-  "builtInAffixesVersion": 2
+  "builtInAffixesVersion": 2,
+  "apiProfiles": [],
+  "activeApiProfileId": ""
 }

@@ -29,6 +29,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .changelog-button{margin-left:auto;flex:none;white-space:nowrap;font-size:12px;padding:8px 11px;background:var(--panel);color:var(--accent)}.changelog-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}.release-list{margin-top:16px;max-height:52dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}.release-entry{padding:12px 0;border-top:1px solid var(--line)}.release-entry:first-child{padding-top:0;border-top:0}.release-heading{display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 8px;cursor:pointer;list-style:none}.release-heading::-webkit-details-marker{display:none}.release-version{color:var(--accent);font-weight:600}.release-heading::after{content:"＋";grid-column:2;grid-row:2;text-align:right;color:var(--accent)}.release-entry[open]>.release-heading::after{content:"−"}.release-heading time{margin-left:auto;color:var(--muted);font-size:11px}.release-title{font-size:12px;color:var(--muted);grid-column:1;grid-row:2;font-weight:400}.release-entry ul{margin:9px 0 0;padding-left:19px;font-size:12px;line-height:1.8;color:var(--muted)}.release-entry li+li{margin-top:5px}
+.collection-tools{display:flex;gap:8px;margin-top:-5px;margin-bottom:12px}.tag-filter,.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}.tag-filter{max-height:112px;overflow:auto}.tag-filter button{font-size:11px;padding:4px 9px;border-radius:20px;background:transparent}.tag-filter button.active{background:var(--soft);color:var(--accent);border-color:var(--accent)}.tag-row .tag{font-size:10px}.saved-card h3{overflow-wrap:anywhere}.saved-summary{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:10px 0 14px;line-height:1.7}.saved-card .actions{gap:6px}.saved-card .actions button{padding:5px 9px}.association-launch{width:100%;text-align:left;overflow-wrap:anywhere}.association-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:62px;gap:8px;max-height:min(552px,48dvh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}.association-grid>.empty{grid-column:1/-1;grid-row:span 2;padding:16px}.association-option{text-align:left;padding:8px;min-width:0;font-size:12px;overflow:hidden}.association-option strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.association-option small{display:block;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.association-option.active{border-color:var(--accent);background:var(--soft)}#reader-dialog{width:min(680px,calc(100% - 24px));max-height:88dvh}#reader-title{overflow-wrap:anywhere}.reader-content{margin-top:12px;max-height:52dvh;overflow:auto;overscroll-behavior:contain}.reader-content .plain-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.95;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--field)}.reader-content iframe{display:block;width:100%;height:50dvh;border:1px solid var(--line);border-radius:12px;background:var(--field)}#reader-source{margin-top:12px;height:50dvh;resize:vertical;font-size:12px}#api-status{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -57,9 +58,11 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
   </section>
   <section id="page-saved" class="page">
     <div class="panel">
-      <div class="row between title"><h2>我的收藏</h2><div class="saved-tools"><button id="add-story" class="small primary">＋ 保存小剧场指令</button><button id="add-reply" class="small">＋ 收藏角色回复</button></div></div>
+      <div class="row between title"><h2>我的收藏</h2></div>
       <div class="subtabs" aria-label="收藏分类"><button class="active" data-collection="stories">小剧场指令 <small id="stories-count">0</small></button><button data-collection="replies">角色回复 <small id="replies-count">0</small></button></div>
-      <input id="saved-search" class="search" aria-label="搜索收藏" placeholder="搜索标题、正文或角色名……">
+      <input id="saved-search" class="search" aria-label="搜索收藏" placeholder="搜索标题、正文、角色名或标签……">
+      <div class="collection-tools"><button id="add-story" class="small primary">＋ 添加指令</button><button id="add-reply" class="small primary" hidden>＋ 添加回复</button></div>
+      <div id="saved-tag-filter" class="tag-filter" aria-label="按标签筛选"></div><button id="clear-story-filter" class="small ghost" style="margin-bottom:12px" hidden></button>
       <div id="saved-list" class="saved-list"></div>
     </div>
   </section>
@@ -74,12 +77,15 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
   </section>
   <section id="page-api" class="page"><div class="panel api">
     <h2>API 设置</h2><p class="note" style="margin-top:8px">填写 OpenAI 兼容的 Chat Completions API。请求通过当前酒馆服务器发送，独立使用下方的小剧场指令预设。</p>
+    <label class="label" for="api-profile">已保存的 API 配置</label><select id="api-profile"></select>
+    <div class="settings-actions"><button id="new-api-profile" class="small">＋ 新配置</button><button id="delete-api-profile" class="small danger">删除当前配置</button></div>
+    <label class="label" for="api-profile-name">配置名称</label><input id="api-profile-name" maxlength="80" placeholder="例如：常用模型、备用 API">
     <label class="label" for="api-url">API 地址</label><input id="api-url" placeholder="https://你的地址/v1" autocomplete="off">
     <label class="label" for="api-key">API 密钥</label><input id="api-key" type="password" autocomplete="off" placeholder="输入 API Key"><p class="note" style="margin-top:6px">密钥保存在当前酒馆用户设置中，不随备份导出。</p>
     <div class="actions"><button id="connect-api" class="primary">连接 API</button></div>
     <p id="api-status" class="note" role="status" aria-live="polite" style="margin-top:10px">连接后选择可用模型</p>
     <label class="label" for="api-model">选择模型</label><select id="api-model" disabled><option value="">请先连接 API</option></select>
-    <div class="actions"><button id="save-api" class="primary" disabled>保存设置</button></div>
+    <div class="actions"><button id="save-api" class="primary" disabled>保存并使用</button></div>
     <div class="settings-section">
       <h3>小剧场指令生成预设</h3><p class="note" style="margin-top:8px">根据脑洞生成可发送的创作指令，发送后再由酒馆角色演出。自动读取角色卡、用户设定与最近 20 条聊天，使用这里的独立预设。</p>
       <label class="label" for="prompt-preset">正在使用</label><select id="prompt-preset"></select>
@@ -90,13 +96,13 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
       <div class="settings-actions"><button id="save-preset" class="primary">保存并使用</button><button id="new-preset">＋ 新建预设</button><button id="reset-preset" class="ghost">恢复内置提示词</button><button id="delete-preset" class="ghost danger">删除预设</button></div>
     </div>
     <div class="settings-section">
-      <h3>备份与恢复</h3><p class="note" style="margin-top:8px">备份前后缀、组合、小剧场指令、角色回复、提示词预设、内置与自定义配色及 API 地址与模型。API 密钥不包含在备份中。</p>
+      <h3>备份与恢复</h3><p class="note" style="margin-top:8px">备份前后缀、组合、小剧场指令、角色回复、提示词预设、内置与自定义配色及多组 API 配置的名称、地址与模型。所有 API 密钥不包含在备份中。</p>
       <div class="settings-actions"><button id="export-backup" class="primary">↓ 导出备份</button><button id="import-backup">↑ 导入备份</button></div><input id="backup-file" type="file" accept=".json,application/json" hidden><p id="backup-status" class="backup-status" role="status"></p>
     </div>
   </div></section>
 </main>
 <dialog id="changelog-dialog" aria-labelledby="changelog-heading"><div class="row between"><h2 id="changelog-heading">更新日志</h2><button class="icon" data-close="changelog-dialog" aria-label="关闭更新日志">✕</button></div><div class="changelog-summary"><span id="changelog-version" class="tag">正在读取版本…</span><span class="note">最近更新在最上方</span></div><div id="changelog-content" class="release-list" aria-live="polite"></div><button id="retry-changelog" class="small" style="margin-top:12px" hidden>重新加载</button></dialog>
-<dialog id="story-dialog"><form id="story-form"><div class="row between"><h2>保存小剧场指令</h2><button type="button" class="icon" data-close="story-dialog" aria-label="关闭">✕</button></div><label class="label" for="story-title">标题</label><input id="story-title" maxlength="100" required placeholder="给小剧场指令起个名字"><label class="label" for="story-text">指令内容</label><textarea id="story-text" required placeholder="粘贴或写下想保存的小剧场指令……"></textarea><div class="dialog-actions"><button type="button" data-close="story-dialog">取消</button><button class="primary" type="submit">保存指令</button></div></form></dialog>
+<dialog id="story-dialog"><form id="story-form"><div class="row between"><h2 id="story-heading">保存小剧场指令</h2><button type="button" class="icon" data-close="story-dialog" aria-label="关闭">✕</button></div><label class="label" for="story-title">标题</label><input id="story-title" maxlength="100" required placeholder="给小剧场指令起个名字"><label class="label" for="story-tags">标签</label><input id="story-tags" maxlength="900" placeholder="例如：番外，甜文，校园（逗号分隔）"><label class="label" for="story-text">指令内容</label><textarea id="story-text" required placeholder="粘贴或写下想保存的小剧场指令……"></textarea><div class="dialog-actions"><button type="button" data-close="story-dialog">取消</button><button id="story-submit" class="primary" type="submit">保存指令</button></div></form></dialog>
 <dialog id="import-dialog"><div class="row between"><h2>导入备份</h2><button class="icon" data-close="import-dialog" aria-label="关闭">✕</button></div><p id="import-file-name" class="note" style="margin-top:10px"></p><div id="import-stats" class="backup-stats"></div><div class="import-options"><label><input type="radio" name="import-mode" value="merge" checked><span><strong>合并导入</strong><small>添加新的条目和收藏，保留现有配色与 API 设置。相同内容不会重复添加。</small></span></label><label><input type="radio" name="import-mode" value="replace"><span><strong>覆盖恢复</strong><small>用备份中的内容与设置替换当前已保存的数据。</small></span></label></div><div class="dialog-actions"><button data-close="import-dialog">取消</button><button id="confirm-import" class="primary">确认导入</button></div></dialog>
 <dialog id="appearance-dialog"><div class="row between"><h2 id="appearance-heading">美化</h2><button class="icon" data-close="appearance-dialog" aria-label="关闭">✕</button></div><p class="note" style="margin-top:8px">日间与夜间分别记住你选择的配色。</p><div class="settings-actions"><button id="import-theme" class="primary">↑ 导入美化</button><button id="export-theme">↓ 导出当前美化</button></div><input id="theme-file" type="file" accept=".json,application/json" hidden><p class="note" style="margin-top:10px">导出后可修改文件里的名称、日夜模式和色值，再导入使用。</p><p id="theme-status" class="backup-status" role="status"></p><div id="palette-list" class="palette-grid"></div><button id="delete-current-theme" class="small ghost danger" style="margin-top:16px" hidden>删除当前自定义美化</button></dialog>
 <dialog id="picker-dialog"><div class="row between"><h2 id="picker-heading">选择前缀</h2><button class="icon" data-close="picker-dialog" aria-label="关闭">✕</button></div><button id="picker-new" class="small primary">＋ 新建并保存</button><div id="prefix-pool" class="entry-grid"></div><div id="suffix-pool" class="entry-grid" hidden></div><div id="group-pool" class="entry-grid" hidden></div><p class="scroll-note">点击名称查看详情 · 点击 ＋ 直接添加</p></dialog>
@@ -112,13 +118,17 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
   <div class="row between"><h2 id="reply-heading">收藏角色回复</h2><button type="button" class="icon" data-close="reply-dialog" aria-label="关闭">✕</button></div>
   <label class="label" for="reply-title">标题</label><input id="reply-title" maxlength="100" required placeholder="给这段回复起个名字">
   <label class="label" for="reply-role">角色名 <span class="note">（选填）</span></label><input id="reply-role" maxlength="80" placeholder="这是谁的回复？">
-  <label class="label" for="reply-story">关联小剧场指令 <span class="note">（选填）</span></label><select id="reply-story"></select>
+  <label class="label" for="reply-tags">标签</label><input id="reply-tags" maxlength="900" placeholder="例如：番外，甜文，校园（逗号分隔）">
+  <label class="label" for="choose-reply-story">关联小剧场指令 <span class="note">（选填）</span></label><input id="reply-story" type="hidden"><button id="choose-reply-story" type="button" class="association-launch">不关联 · 点击选择</button>
   <label class="label" for="reply-text">回复正文</label><textarea id="reply-text" required placeholder="粘贴喜欢的角色回复，也可以在这里修改……"></textarea>
-  <div class="dialog-actions"><button type="button" data-close="reply-dialog">取消</button><button class="primary" type="submit">保存回复</button></div>
+  <div class="dialog-actions"><button type="button" data-close="reply-dialog">取消</button><button id="reply-submit" class="primary" type="submit">保存回复</button></div>
 </form></dialog>
+<dialog id="association-dialog" aria-labelledby="association-heading"><div class="row between"><h2 id="association-heading">关联小剧场指令</h2><button class="icon" data-close="association-dialog" aria-label="关闭">✕</button></div><input id="association-search" class="search" placeholder="搜索标题、内容或标签" aria-label="搜索关联指令"><button id="unlink-reply" class="small ghost" style="margin-bottom:12px">不关联</button><div id="association-list" class="association-grid"></div><p class="scroll-note">每排两条 · 最多八行 · 更多内容向下滑动</p></dialog>
+<dialog id="reader-dialog" aria-labelledby="reader-title"><div class="row between"><span id="reader-type" class="tag"></span><button class="icon" data-close="reader-dialog" aria-label="关闭">✕</button></div><h2 id="reader-title" style="margin-top:12px"></h2><p id="reader-meta" class="note" style="margin-top:6px"></p><div id="reader-tags" class="tag-row"></div><div id="reader-links" class="settings-actions"></div><div class="subtabs"><button id="reader-formatted" class="active">阅读效果</button><button id="reader-original">原文</button></div><div id="reader-content" class="reader-content"></div><textarea id="reader-source" readonly aria-label="收藏原文" hidden></textarea><div class="dialog-actions"><button id="reader-edit">编辑</button><button id="reader-copy">复制原文</button><button id="reader-send" class="primary">↑ 发送指令</button></div></dialog>
 <dialog id="send-dialog"><div class="row between"><h2>发送预览</h2><button type="button" class="icon" data-close="send-dialog" aria-label="关闭">✕</button></div><p class="note" style="margin-top:12px">以下指令会通过酒馆的用户发送键发出。</p><textarea id="send-text" readonly aria-label="待发送正文" style="margin-top:14px"></textarea><div class="dialog-actions"><button data-close="send-dialog">关闭</button><button class="primary" id="copy-send">复制正文</button></div></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script type="module">
+import { normalizeTags, validateApiProfiles, upgradeUserData, mergeTaggedRecords } from "./data-core.js";
 import { composeInstruction, upgradeAffixes } from "./core.mjs";
 import { THEME_VARIABLES, validateThemeCatalog, themeSignature, makeThemeFile, parseThemeFile } from "./theme-core.js";
 "use strict";
@@ -140,6 +150,7 @@ let state;
 try{const cached=host?host.readState():JSON.parse(localStorage.getItem(storageKey)||"null");state=cached&&["prefixes","suffixes","groups","saved"].every(k=>Array.isArray(cached[k]))?cached:defaults();}catch{state=defaults();}
 const initialStateBeforeUpgrade=JSON.stringify(state);
 upgradeAffixes(state);
+upgradeUserData(state);
 if(!Array.isArray(state.replies))state.replies=[];
 if(!["day","night"].includes(state.mode))state.mode=["cream","sakura","mint","sky"].includes(state.theme)?"day":"night";
 function reservedThemeIds(){return Object.values(palettes).flat().map(p=>p.id);}
@@ -156,13 +167,14 @@ state.api||={url:"",model:""};
 if(!Array.isArray(state.promptPresets)||!state.promptPresets.length)state.promptPresets=[defaultPreset()];
 state.promptPresets=upgradeBuiltInPresets(state.promptPresets);
 if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
+let storyEditing=null,readerItem=null,storyFilterId="",tagFilters={stories:"",replies:""},collectionQueries={stories:"",replies:""};
 let selected={prefix:[],suffix:[]},results=[],editing=null,replyEditing=null,collection="stories",toastTimer,libraryKind="prefix",pickerKind="prefix",detailItem=null,resumePicker=false,pendingImport=null;
 function toast(message){$("toast").textContent=message;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),3000);}
 function persist(){try{if(host)host.saveState(state);else localStorage.setItem(storageKey,JSON.stringify(state));return true;}catch{toast("未能保存，请检查浏览器存储空间或设置");return false;}}
 function empty(text,symbol="✧"){return `<div class="empty"><div class="symbol" aria-hidden="true">${symbol}</div>${esc(text)}</div>`;}
 function source(kind){return kind==="prefix"?state.prefixes:state.suffixes;}
 function switchTab(name){document.querySelectorAll(".tabs button").forEach(b=>{b.classList.toggle("active",b.dataset.tab===name);if(b.dataset.tab===name)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));}
-function switchCollection(name){collection=name;document.querySelectorAll("[data-collection]").forEach(b=>b.classList.toggle("active",b.dataset.collection===name));renderSaved();}
+function switchCollection(name){collectionQueries[collection]=$("saved-search").value;collection=name;$("saved-search").value=collectionQueries[name]||"";storyFilterId="";document.querySelectorAll("[data-collection]").forEach(b=>b.classList.toggle("active",b.dataset.collection===name));renderSaved();}
 function buildPrompt(){return $("idea").value.trim();}
 function activePreset(){return state.promptPresets.find(p=>p.id===state.activePresetId)||state.promptPresets[0];}
 function buildGenerationRequest(){const p=activePreset();return {model:state.api.model||"",messages:[{role:"system",content:p.systemPrompt+`\n\n篇幅要求：本次生成的创作指令以约 ${p.targetWords} 字为目标，简洁明确，保留必要情境与要求。这是指令本身的长度，不是最终小剧场正文的字数。`},{role:"user",content:buildPrompt()}],max_tokens:p.maxTokens};}
@@ -258,18 +270,51 @@ async function regenerateResult(id){
 }
 // 正式插件接入点：生成时通过酒馆上下文读取角色卡、用户设定与最近聊天，调用配置的 API。
 function resultText(id){return document.querySelector(`[data-result-text="${id}"]`)?.value||"";}
-function saveResult(id){const result=results.find(i=>i.id===id),raw=resultText(id).trim();if(!result||!raw){toast("指令不能为空");return;}const text=composeInstruction(raw,selected);const existing=state.saved.find(i=>i.id===result.savedId);if(existing){existing.text=text;existing.updated=Date.now();}else{result.savedId=uid();state.saved.unshift({id:result.savedId,title:result.idea.slice(0,36)||"未命名小剧场指令",text,created:Date.now(),updated:Date.now()});}if(persist())toast(existing?"已更新小剧场指令":"小剧场指令已保存");renderSaved();}
+function saveResult(id){const result=results.find(i=>i.id===id),raw=resultText(id).trim();if(!result||!raw){toast("指令不能为空");return;}const text=composeInstruction(raw,selected);const existing=state.saved.find(i=>i.id===result.savedId);if(existing){existing.text=text;existing.updated=Date.now();}else{result.savedId=uid();state.saved.unshift({id:result.savedId,title:result.idea.slice(0,36)||"未命名小剧场指令",text,tags:[],created:Date.now(),updated:Date.now()});}if(persist())toast(existing?"已更新小剧场指令":"小剧场指令已保存");renderSaved();}
 async function sendStory(text,storyId=null,sourceIdentity=null){
   if(!text.trim()){toast("指令内容不能为空");return;}if(!host){toast("请在酒馆内发送");return;}
-  const buttons=document.querySelectorAll('[data-action="send-result"],[data-action="send-saved"]');buttons.forEach(b=>b.disabled=true);
+  const buttons=document.querySelectorAll('[data-action="send-result"],[data-action="send-saved"],#reader-send');buttons.forEach(b=>b.disabled=true);
   try{await host.send(text,storyId,sourceIdentity);toast("已通过用户发送键发出");}catch(e){toast("发送失败："+e.message);}finally{buttons.forEach(b=>b.disabled=false);}
 }
 // 正式插件接入点：将 sendStory 的正文写入用户输入框，再触发酒馆用户发送键。
-function savedText(id){return document.querySelector(`[data-saved-text="${id}"]`)?.value||"";}
-function renderSaved(){$("stories-count").textContent=state.saved.length;$("replies-count").textContent=state.replies.length;const query=$("saved-search").value.trim().toLowerCase(),list=collection==="stories"?state.saved:state.replies;const items=list.filter(i=>(i.title+"\n"+i.text+"\n"+(i.role||"")).toLowerCase().includes(query));$("saved-list").innerHTML=items.length?items.map(i=>{const isReply=collection==="replies",linked=isReply?state.saved.find(s=>s.id===i.storyId):null;return `<article class="saved-card"><div class="row between" style="margin-bottom:10px"><span class="tag">${isReply?"角色回复":"小剧场指令"}</span><span class="meta">${new Date(i.created).toLocaleDateString("zh-CN")}</span></div><input aria-label="收藏标题" data-saved-title="${i.id}" value="${esc(i.title)}">${isReply?`<p class="note" style="margin-top:9px">${esc(i.role||"未填写角色名")}${linked?" · "+esc(linked.title):""}</p>`:""}<textarea aria-label="收藏正文" data-saved-text="${i.id}">${esc(i.text)}</textarea><div class="actions"><button class="small" data-action="update-saved" data-id="${i.id}">保存修改</button>${isReply?`<button class="small ghost" data-action="edit-reply" data-id="${i.id}">编辑信息</button>`:`<button class="small primary" data-action="send-saved" data-id="${i.id}">↑ 发送</button>`}<button class="small ghost" data-action="copy-saved" data-id="${i.id}">复制</button><button class="small ghost danger" data-action="delete-saved" data-id="${i.id}">删除</button></div></article>`;}).join(""):empty(query?"没有找到匹配内容":collection==="stories"?"暂无保存的小剧场指令":"暂无收藏的角色回复");}
-function openReply(id=null){replyEditing=id;const item=id?state.replies.find(i=>i.id===id):null;$("reply-heading").textContent=item?"编辑角色回复":"收藏角色回复";$("reply-title").value=item?document.querySelector(`[data-saved-title="${id}"]`)?.value??item.title:"";$("reply-role").value=item?.role||"";$("reply-text").value=item?savedText(id)||item.text:"";$("reply-story").innerHTML='<option value="">不关联</option>'+state.saved.map(i=>`<option value="${esc(i.id)}">${esc(i.title)}</option>`).join("");$("reply-story").value=item?.storyId||"";$("reply-dialog").showModal();}
-$("story-form").addEventListener("submit",e=>{e.preventDefault();const title=$("story-title").value.trim(),text=$("story-text").value.trim();if(!title||!text){toast("请填写标题和正文");return;}state.saved.unshift({id:uid(),title,text,created:Date.now(),updated:Date.now()});const ok=persist();$("story-dialog").close();$("saved-search").value="";switchCollection("stories");switchTab("saved");if(ok)toast("小剧场指令已保存");});
-$("reply-form").addEventListener("submit",e=>{e.preventDefault();const title=$("reply-title").value.trim(),text=$("reply-text").value.trim();if(!title||!text){toast("请填写标题和回复正文");return;}const fields={title,text,role:$("reply-role").value.trim(),storyId:$("reply-story").value,updated:Date.now()},existing=state.replies.find(i=>i.id===replyEditing);if(existing)Object.assign(existing,fields);else state.replies.unshift({id:uid(),created:Date.now(),...fields});const ok=persist();$("reply-dialog").close();switchCollection("replies");switchTab("saved");if(ok)toast(existing?"回复已更新":"角色回复已收藏");});
+function collectionList(kind=collection){return kind==="stories"?state.saved:state.replies;}
+function savedText(id){return collectionList().find(i=>i.id===id)?.text||"";}
+function tagMarkup(tags){return normalizeTags(tags).map(t=>`<span class="tag">${esc(t)}</span>`).join("");}
+function summaryText(text){const doc=new DOMParser().parseFromString(String(text),"text/html");doc.querySelectorAll("style,script").forEach(el=>el.remove());return (doc.body.textContent||"").replace(/```(?:html|css|javascript)?/gi,"").replace(/\s+/g," ").trim().slice(0,180)||"点击查看完整内容";}
+function renderSaved(){
+ $("stories-count").textContent=state.saved.length;$("replies-count").textContent=state.replies.length;$("add-story").hidden=collection!=="stories";$("add-reply").hidden=collection!=="replies";
+ const query=$("saved-search").value.trim().toLowerCase(),list=collectionList(),tags=[...new Set(list.flatMap(i=>i.tags||[]))].sort((a,b)=>a.localeCompare(b));
+ if(tagFilters[collection]!=="__little_theater_internal_untagged_filter__"&&!tags.includes(tagFilters[collection]))tagFilters[collection]="";
+ $("saved-tag-filter").innerHTML=[["","全部"],["__little_theater_internal_untagged_filter__","未标记"],...tags.map(t=>[t,t])].map(([value,label])=>`<button class="${tagFilters[collection]===value?"active":""}" data-action="filter-tag" data-tag="${esc(value)}">${esc(label)}</button>`).join("");
+ const linked=state.saved.find(i=>i.id===storyFilterId);$("clear-story-filter").hidden=!storyFilterId;$("clear-story-filter").textContent="关联："+(linked?.title||"已删除指令")+" · 清除筛选";
+ const items=list.filter(i=>(i.title+"\n"+i.text+"\n"+(i.role||"")+"\n"+(i.tags||[]).join(" ")).toLowerCase().includes(query)&&(!tagFilters[collection]||(tagFilters[collection]==="__little_theater_internal_untagged_filter__"?!(i.tags||[]).length:(i.tags||[]).includes(tagFilters[collection])))&&(!storyFilterId||i.storyId===storyFilterId));
+ $("saved-list").innerHTML=items.length?items.map(i=>{const isReply=collection==="replies",related=isReply?state.saved.find(item=>item.id===i.storyId):null;return `<article class="saved-card"><div class="row between" style="margin-bottom:8px"><span class="tag">${isReply?"角色回复":"小剧场指令"}</span><span class="meta">${new Date(i.created).toLocaleDateString("zh-CN")}</span></div><h3>${esc(i.title)}</h3>${isReply?`<p class="note" style="margin-top:6px">${esc(i.role||"未填写角色名")}${related?" · "+esc(related.title):""}</p>`:""}<div class="tag-row">${tagMarkup(i.tags)}</div><p class="saved-summary">${esc(summaryText(i.text))}</p><div class="actions"><button class="small primary" data-action="view-saved" data-id="${esc(i.id)}">查看全文</button><button class="small ghost" data-action="edit-saved" data-id="${esc(i.id)}">编辑</button>${isReply?"":`<button class="small" data-action="send-saved" data-id="${esc(i.id)}">↑ 发送</button>`}<button class="small ghost" data-action="copy-saved" data-id="${esc(i.id)}">复制</button><button class="small ghost danger" data-action="delete-saved" data-id="${esc(i.id)}">删除</button></div></article>`;}).join(""):empty(query||tagFilters[collection]||storyFilterId?"没有找到匹配内容":collection==="stories"?"暂无保存的小剧场指令":"暂无收藏的角色回复");
+}
+function openStory(id=null){storyEditing=id;const item=id?state.saved.find(i=>i.id===id):null;$("story-heading").textContent=item?"编辑小剧场指令":"保存小剧场指令";$("story-submit").textContent=item?"保存修改":"保存指令";$("story-title").value=item?.title||"";$("story-text").value=item?.text||"";$("story-tags").value=(item?.tags||[]).join("，");$("story-dialog").showModal();}
+function openReply(id=null){replyEditing=id;const item=id?state.replies.find(i=>i.id===id):null;$("reply-heading").textContent=item?"编辑角色回复":"收藏角色回复";$("reply-submit").textContent=item?"保存修改":"保存回复";$("reply-title").value=item?.title||"";$("reply-role").value=item?.role||"";$("reply-text").value=item?.text||"";$("reply-tags").value=(item?.tags||[]).join("，");$("reply-story").value=item?.storyId||"";renderReplyAssociation();$("reply-dialog").showModal();}
+function renderReplyAssociation(){const id=$("reply-story").value,item=state.saved.find(i=>i.id===id);$("choose-reply-story").textContent=item?item.title+" · 点击更换":id?"关联指令已删除 · 点击更换":"不关联 · 点击选择";}
+function renderAssociations(){const q=$("association-search").value.trim().toLowerCase(),items=state.saved.filter(i=>(i.title+"\n"+i.text+"\n"+(i.tags||[]).join(" ")).toLowerCase().includes(q));$("association-list").innerHTML=items.length?items.map(i=>`<button class="association-option ${$("reply-story").value===i.id?"active":""}" data-action="associate-story" data-id="${esc(i.id)}"><strong>${esc(i.title)}</strong><small>${esc((i.tags||[]).join(" · ")||summaryText(i.text))}</small></button>`).join(""):empty(q?"没有找到匹配指令":"先保存一条小剧场指令");}
+function openReader(kind,id){const item=collectionList(kind).find(i=>i.id===id);if(!item){toast("这条收藏已被删除");return;}readerItem={kind,id};$("reader-title").textContent=item.title;$("reader-type").textContent=kind==="stories"?"小剧场指令":"角色回复";$("reader-meta").textContent=[item.role,new Date(item.created).toLocaleDateString("zh-CN")].filter(Boolean).join(" · ");$("reader-tags").innerHTML=tagMarkup(item.tags);$("reader-source").value=item.text;$("reader-send").hidden=kind!=="stories";
+ const linked=state.saved.find(i=>i.id===item.storyId),count=state.replies.filter(i=>i.storyId===id).length;
+ $("reader-links").innerHTML=kind==="replies"&&linked?`<button class="small" data-action="view-linked-story" data-id="${esc(linked.id)}">关联指令：${esc(linked.title)}</button>`:kind==="stories"&&count?`<button class="small" data-action="related-replies" data-id="${esc(id)}">查看关联回复 · ${count}</button>`:"";
+ const content=$("reader-content");content.replaceChildren();
+ if(kind==="replies"){
+  let html=null;try{html=host?.formatReply?.(item.text,item.role);}catch{}
+  if(typeof html==="string"){
+   const parsed=new DOMParser().parseFromString(html,"text/html");parsed.querySelectorAll("script,iframe,object,embed,form,meta,link,base").forEach(el=>el.remove());for(const el of parsed.querySelectorAll("*")){for(const a of Array.from(el.attributes)){if(a.name.startsWith("on")||["srcdoc","srcset","autofocus"].includes(a.name))el.removeAttribute(a.name);}}
+   const styles=Array.from(parsed.head.querySelectorAll("style")).map(el=>el.outerHTML).join("");
+   const iframe=document.createElement("iframe");iframe.setAttribute("sandbox","");iframe.setAttribute("referrerpolicy","no-referrer");iframe.title="角色回复阅读效果";
+   const css=getComputedStyle(document.documentElement),color=v=>css.getPropertyValue(v).trim().replace(/[^#a-zA-Z0-9(),.% -]/g,"");
+   iframe.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src https: http: data:; form-action 'none'; base-uri 'none'"><style>body{margin:0;padding:16px;background:${color("--field")};color:${color("--text")};font:14px/1.9 system-ui;overflow-wrap:anywhere}img{max-width:100%;height:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}blockquote{margin:10px 0;padding-left:12px;border-left:3px solid ${color("--accent")}}a{color:${color("--accent")}}.mes_text{white-space:normal}</style>${styles}</head><body><div class="mes_text">${parsed.body.innerHTML}</div></body></html>`;content.append(iframe);
+  }else{const plain=document.createElement("div");plain.className="plain-text";plain.textContent=item.text;content.append(plain);}
+ }else{const plain=document.createElement("div");plain.className="plain-text";plain.textContent=item.text;content.append(plain);}
+ showReaderSource(false);if(!$("reader-dialog").open)$("reader-dialog").showModal();
+}
+function showReaderSource(original){$("reader-source").hidden=!original;$("reader-content").hidden=original;$("reader-original").classList.toggle("active",original);$("reader-formatted").classList.toggle("active",!original);}
+function editSaved(kind,id){$("reader-dialog").close();kind==="stories"?openStory(id):openReply(id);}
+function afterCollectionSave(kind){$("saved-search").value="";collectionQueries[kind]="";tagFilters[kind]="";switchCollection(kind);switchTab("saved");}
+$("story-form").addEventListener("submit",e=>{e.preventDefault();const title=$("story-title").value.trim(),text=$("story-text").value.trim();if(!title||!text){toast("请填写标题和正文");return;}const existing=state.saved.find(i=>i.id===storyEditing),fields={title,text,tags:normalizeTags($("story-tags").value),updated:Date.now()};if(existing)Object.assign(existing,fields);else state.saved.unshift({id:uid(),created:Date.now(),...fields});if(!persist())return;$("story-dialog").close();afterCollectionSave("stories");toast(existing?"修改已保存":"小剧场指令已保存");});
+$("reply-form").addEventListener("submit",e=>{e.preventDefault();const title=$("reply-title").value.trim(),text=$("reply-text").value.trim();if(!title||!text){toast("请填写标题和回复正文");return;}const fields={title,text,role:$("reply-role").value.trim(),storyId:$("reply-story").value,tags:normalizeTags($("reply-tags").value),updated:Date.now()},existing=state.replies.find(i=>i.id===replyEditing);if(existing)Object.assign(existing,fields);else state.replies.unshift({id:uid(),created:Date.now(),...fields});if(!persist())return;$("reply-dialog").close();afterCollectionSave("replies");toast(existing?"修改已保存":"角色回复已收藏");});
 
 const validId=value=>typeof value==="string"&&/^[A-Za-z0-9_-]{1,120}$/.test(value);
 function validateBackupData(data){
@@ -280,8 +325,10 @@ function validateBackupData(data){
   const date=value=>{if(typeof value!=="number"||!Number.isFinite(value)||value<0||value>8640000000000000)throw Error("保存日期无效");return value;};
   const unique=(items,label)=>{if(new Set(items.map(i=>i.id)).size!==items.length)throw Error(label+"含重复编号");return items;};
   const affix=item=>{if(!item||typeof item!=="object")throw Error("前后缀条目无效");return{id:id(item.id),name:str(item.name,"名称",1000),text:str(item.text,"正文")};};
-  const story=item=>{if(!item||typeof item!=="object")throw Error("收藏条目无效");return{id:id(item.id),title:str(item.title,"标题",1000),text:str(item.text,"正文"),created:date(item.created),updated:date(item.updated??item.created)};};
+  const story=item=>{if(!item||typeof item!=="object")throw Error("收藏条目无效");return{id:id(item.id),title:str(item.title,"标题",1000),text:str(item.text,"正文"),tags:normalizeTags(item.tags),created:date(item.created),updated:date(item.updated??item.created)};};
   const cleaned={prefixes:unique(list(data.prefixes,"前缀").map(affix),"前缀"),suffixes:unique(list(data.suffixes,"后缀").map(affix),"后缀"),groups:unique(list(data.groups,"组合").map(g=>({id:id(g.id),name:str(g.name,"组合名称",1000),prefix:list(g.prefix,"组合前缀").map(affix),suffix:list(g.suffix,"组合后缀").map(affix)})),"组合"),saved:unique(list(data.saved,"小剧场").map(story),"小剧场"),replies:unique(list(data.replies,"角色回复").map(r=>({...story(r),role:typeof r.role==="string"?r.role.slice(0,1000):"",storyId:r.storyId?id(r.storyId):""})),"角色回复"),api:{url:typeof data.api?.url==="string"?data.api.url.slice(0,4096):"",model:typeof data.api?.model==="string"?data.api.model.slice(0,1000):""},mode:["day","night"].includes(data.mode)?data.mode:"night",appearance:{day:"cream",night:"violet"},appearanceMigrated:true};
+  cleaned.apiProfiles=validateApiProfiles(data.apiProfiles||[]);cleaned.activeApiProfileId=cleaned.apiProfiles.some(p=>p.id===data.activeApiProfileId)?data.activeApiProfileId:"";
+  upgradeUserData(cleaned);const activeApiProfile=cleaned.apiProfiles.find(p=>p.id===cleaned.activeApiProfileId);if(activeApiProfile)cleaned.api={url:activeApiProfile.url,model:activeApiProfile.model};
   cleaned.customThemes=validateThemeCatalog(data.customThemes||[],reservedThemeIds());
   for(const mode of ["day","night"]){const chosen=data.appearance?.[mode];if(paletteOptions(mode,cleaned.customThemes).some(p=>p.id===chosen))cleaned.appearance[mode]=chosen;}
   cleaned.theme=cleaned.appearance[cleaned.mode];
@@ -301,15 +348,16 @@ function mergeBackup(base,incoming){
   const affixSignature=i=>JSON.stringify([i.name,i.text]);
   const prefixes=merge(merged.prefixes,incoming.prefixes,affixSignature),suffixes=merge(merged.suffixes,incoming.suffixes,affixSignature);
   merge(merged.groups,incoming.groups.map(g=>({...g,prefix:g.prefix.map(i=>({...i,id:prefixes.get(i.id)||i.id})),suffix:g.suffix.map(i=>({...i,id:suffixes.get(i.id)||i.id}))})),g=>JSON.stringify([g.name,g.prefix.map(affixSignature),g.suffix.map(affixSignature)]));
-  const stories=merge(merged.saved,incoming.saved,i=>JSON.stringify([i.title,i.text]));
-  merge(merged.replies,incoming.replies.map(r=>({...r,storyId:stories.get(r.storyId)||r.storyId})),i=>JSON.stringify([i.title,i.text,i.role||"",i.storyId||""]));
+  const stories=mergeTaggedRecords(merged.saved,incoming.saved,uid,i=>JSON.stringify([i.title,i.text]));
+  mergeTaggedRecords(merged.replies,incoming.replies.map(r=>({...r,storyId:stories.get(r.storyId)||r.storyId})),uid,i=>JSON.stringify([i.title,i.text,i.role||"",i.storyId||""]));
+  merged.apiProfiles||=[];merge(merged.apiProfiles,incoming.apiProfiles||[],i=>JSON.stringify([i.name,i.url,i.model]));merged.apiProfiles=validateApiProfiles(merged.apiProfiles);
   merge(merged.promptPresets,incoming.promptPresets,i=>JSON.stringify([i.name,i.systemPrompt,i.targetWords,i.maxTokens]));
   merged.customThemes||=[];merge(merged.customThemes,incoming.customThemes||[],themeSignature);merged.customThemes=validateThemeCatalog(merged.customThemes,reservedThemeIds());
   return merged;
 }
 function exportBackup(){try{const backup=makeBackup(),blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="little-theater-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);$("backup-status").textContent="备份下载已发起，文件不含 API 密钥。";toast("备份下载已发起");}catch(e){toast("导出失败："+e.message);}}
-async function prepareImport(file){if(!file)return;if(file.size>20*1024*1024){toast("备份文件不能超过 20 MB");return;}try{const text=typeof file.text==="function"?await file.text():await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error("无法读取文件"));reader.readAsText(file,"UTF-8");});pendingImport=parseBackup(text);$("import-file-name").textContent=file.name;$("import-stats").innerHTML=[["前缀",pendingImport.prefixes.length],["后缀",pendingImport.suffixes.length],["组合",pendingImport.groups.length],["小剧场",pendingImport.saved.length],["角色回复",pendingImport.replies.length],["提示词预设",pendingImport.promptPresets.length]].map(([name,count])=>`<span>${name} · ${count}</span>`).join("");document.querySelector('[name="import-mode"][value="merge"]').checked=true;$("import-dialog").showModal();}catch(e){pendingImport=null;toast("导入失败："+e.message);}}
-function confirmImport(){if(!pendingImport)return;const mode=document.querySelector('[name="import-mode"]:checked')?.value||"merge";let candidate;try{candidate=mode==="replace"?pendingImport:mergeBackup(state,pendingImport);if(host){if(mode==="replace")host.saveKey("");host.saveState(candidate);}else localStorage.setItem(storageKey,JSON.stringify(candidate));}catch(e){toast("导入未完成："+e.message);return;}state=candidate;pendingImport=null;$("import-dialog").close();if(mode==="replace"){selected={prefix:[],suffix:[]};results=[];$("idea").value="";$("api-key").value="";}initializeApiForm();$("saved-search").value="";renderAppearance();renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();$("backup-status").textContent=mode==="replace"?"已从备份恢复内容与设置。":"已合并备份，保留现有设置。";toast(mode==="replace"?"备份已恢复":"备份已合并导入");}
+async function prepareImport(file){if(!file)return;if(file.size>20*1024*1024){toast("备份文件不能超过 20 MB");return;}try{const text=typeof file.text==="function"?await file.text():await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error("无法读取文件"));reader.readAsText(file,"UTF-8");});pendingImport=parseBackup(text);$("import-file-name").textContent=file.name;$("import-stats").innerHTML=[["前缀",pendingImport.prefixes.length],["后缀",pendingImport.suffixes.length],["组合",pendingImport.groups.length],["小剧场",pendingImport.saved.length],["角色回复",pendingImport.replies.length],["提示词预设",pendingImport.promptPresets.length],["API 配置",pendingImport.apiProfiles.length]].map(([name,count])=>`<span>${name} · ${count}</span>`).join("");document.querySelector('[name="import-mode"][value="merge"]').checked=true;$("import-dialog").showModal();}catch(e){pendingImport=null;toast("导入失败："+e.message);}}
+function confirmImport(){if(!pendingImport)return;const mode=document.querySelector('[name="import-mode"]:checked')?.value||"merge";let candidate;try{candidate=mode==="replace"?pendingImport:mergeBackup(state,pendingImport);if(host){if(mode==="replace"){host.clearProfileKeys?.();host.saveKey("");}host.saveState(candidate);}else localStorage.setItem(storageKey,JSON.stringify(candidate));}catch(e){toast("导入未完成："+e.message);return;}state=candidate;pendingImport=null;$("import-dialog").close();if(mode==="replace"){selected={prefix:[],suffix:[]};results=[];$("idea").value="";$("api-key").value="";}apiEditingProfileId=state.activeApiProfileId||"";initializeApiForm();$("saved-search").value="";tagFilters={stories:"",replies:""};collectionQueries={stories:"",replies:""};storyFilterId="";renderAppearance();renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();$("backup-status").textContent=mode==="replace"?"已从备份恢复内容与设置。":"已合并备份，保留现有设置。";toast(mode==="replace"?"备份已恢复":"备份已合并导入");}
 
 async function copyText(text){if(!text.trim()){toast("正文不能为空");return;}try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);}else{const field=document.createElement("textarea");field.value=text;field.style.cssText="position:fixed;left:-9999px;top:0";const host=Array.from(document.querySelectorAll("dialog[open]")).pop()||document.body;host.appendChild(field);field.select();const ok=document.execCommand("copy");field.remove();if(!ok)throw new Error("copy failed");}toast("正文已复制");}catch{toast("此浏览器不支持一键复制，请长按正文手动复制");}}
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.disabled)return;if(b.dataset.close){$(b.dataset.close).close();return;}if(b.dataset.tab){switchTab(b.dataset.tab);return;}if(b.dataset.collection){switchCollection(b.dataset.collection);return;}if(b.dataset.mode){state.mode=b.dataset.mode;renderAppearance();persist();return;}if(b.dataset.palette){state.appearance[state.mode]=b.dataset.palette;renderAppearance();persist();$("appearance-dialog").close();return;}if(b.dataset.picker){openPicker(b.dataset.picker);return;}if(b.dataset.library){switchLibrary(b.dataset.library);return;}if(b.dataset.add){openEditor(b.dataset.add);return;}const {action,kind,id}=b.dataset,index=Number(b.dataset.index);
@@ -322,8 +370,12 @@ if(action==="delete-group"){if(!confirm("删除这个组合？"))return;state.gr
 if(action==="save-result")saveResult(id);
 if(action==="send-result"){const item=results.find(i=>i.id===id);const raw=resultText(id).trim();if(!raw){toast("指令不能为空");return;}sendStory(composeInstruction(raw,selected),item?.savedId,item?.sourceIdentity);}
 if(action==="regenerate")regenerateResult(id);
-if(action==="edit-reply")openReply(id);
-if(action==="update-saved"){const item=(collection==="stories"?state.saved:state.replies).find(i=>i.id===id);if(!item)return;const title=document.querySelector(`[data-saved-title="${id}"]`).value.trim(),text=savedText(id).trim();if(!title||!text){toast("标题和正文不能为空");return;}Object.assign(item,{title,text,updated:Date.now()});if(persist())toast("修改已保存");}
+if(action==="filter-tag"){tagFilters[collection]=b.dataset.tag;renderSaved();}
+if(action==="view-saved")openReader(collection,id);
+if(action==="edit-saved")editSaved(collection,id);
+if(action==="associate-story"){$("reply-story").value=id;renderReplyAssociation();$("association-dialog").close();}
+if(action==="view-linked-story")openReader("stories",id);
+if(action==="related-replies"){$("reader-dialog").close();switchCollection("replies");$("saved-search").value="";tagFilters.replies="";storyFilterId=id;renderSaved();switchTab("saved");}
 if(action==="send-saved")sendStory(savedText(id),id);
 if(action==="copy-saved")copyText(savedText(id));
 if(action==="delete-saved"){if(!confirm("删除这条收藏？"))return;if(collection==="stories")state.saved=state.saved.filter(i=>i.id!==id);else state.replies=state.replies.filter(i=>i.id!==id);persist();renderSaved();}
@@ -332,7 +384,10 @@ $("save-group").onclick=()=>{if(!selected.prefix.length&&!selected.suffix.length
 $("clear-selected").onclick=()=>{selected={prefix:[],suffix:[]};renderSelection();};
 $("stop-generation").onclick=()=>batchController?.abort();
 $("generate-button").onclick=generateStories;$("idea").oninput=updatePreview;$("saved-search").oninput=renderSaved;$("add-reply").onclick=()=>openReply();$("copy-send").onclick=()=>copyText($("send-text").value);
-$("add-story").onclick=()=>{$("story-title").value="";$("story-text").value="";$("story-dialog").showModal();};
+$("add-story").onclick=()=>openStory();
+$("clear-story-filter").onclick=()=>{storyFilterId="";renderSaved();};
+$("choose-reply-story").onclick=()=>{$("association-search").value="";renderAssociations();$("association-dialog").showModal();};$("association-search").oninput=renderAssociations;$("unlink-reply").onclick=()=>{$("reply-story").value="";renderReplyAssociation();$("association-dialog").close();};
+$("reader-original").onclick=()=>showReaderSource(true);$("reader-formatted").onclick=()=>showReaderSource(false);$("reader-edit").onclick=()=>{if(readerItem)editSaved(readerItem.kind,readerItem.id);};$("reader-copy").onclick=()=>copyText($("reader-source").value);$("reader-send").onclick=()=>{if(readerItem?.kind!=="stories")return;const item=state.saved.find(i=>i.id===readerItem.id);if(item)sendStory(item.text,item.id);};
 $("save-preset").onclick=()=>savePreset();
 $("prompt-preset").onchange=()=>{const chosen=$("prompt-preset").value;if(!savePreset(false)){$("prompt-preset").value=state.activePresetId;return;}state.activePresetId=chosen;persist();renderPresets();};
 $("new-preset").onclick=()=>{if(!savePreset(false))return;const p={...defaultPreset(),id:uid(),name:"新预设 "+(state.promptPresets.length+1)};state.promptPresets.push(p);state.activePresetId=p.id;persist();renderPresets();$("preset-name").focus();$("preset-name").select();toast("新预设已建立，可修改后保存");};
@@ -360,19 +415,38 @@ $("detail-add").onclick=()=>{if(!detailItem)return;const {kind,id}=detailItem;ki
 $("detail-edit").onclick=()=>{if(!detailItem)return;const {kind,id}=detailItem;$("detail-dialog").close();openEditor(kind,id);};
 $("detail-delete").onclick=()=>{if(!detailItem)return;const {kind,id}=detailItem;if(!confirm(kind==="group"?"删除这个组合？":"删除这条前后缀？已添加的内容和保存的组合仍会保留。"))return;if(kind==="group")state.groups=state.groups.filter(i=>i.id!==id);else{const list=source(kind),n=list.findIndex(i=>i.id===id);if(n>=0)list.splice(n,1);}persist();$("detail-dialog").close();renderSelection();renderLibrary();};
 renderAppearance();
-let apiConnection=null,apiConnectController=null,apiConnectSerial=0;
+let apiConnection=null,apiConnectController=null,apiConnectSerial=0,apiEditingProfileId=state.activeApiProfileId||"";
 function apiFingerprint(){return JSON.stringify([$("api-url").value.trim(),$("api-key").value.trim()]);}
 function invalidateApiConnection(){
  ++apiConnectSerial;apiConnectController?.abort();apiConnectController=null;apiConnection=null;
  $("api-model").innerHTML='<option value="">请先连接 API</option>';$("api-model").disabled=true;$("save-api").disabled=true;
  $("api-status").textContent="地址或密钥已变更，请重新连接";$("connect-api").disabled=false;$("connect-api").textContent="连接 API";
 }
+function renderApiProfiles(){
+ $("api-profile").innerHTML='<option value="">新配置（尚未保存）</option>'+state.apiProfiles.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}${p.id===state.activeApiProfileId?" · 使用中":""}</option>`).join("");$("api-profile").value=apiEditingProfileId;$("delete-api-profile").disabled=!apiEditingProfileId;
+}
 function initializeApiForm(){
- invalidateApiConnection();$("api-url").value=state.api.url||"";$("api-key").value=host?.readKey()||"";
- const model=state.api.model||"";
+ invalidateApiConnection();renderApiProfiles();const profile=state.apiProfiles.find(p=>p.id===apiEditingProfileId),api=profile||{url:"",model:""};
+ $("api-profile-name").value=profile?.name||"";$("api-url").value=api.url;$("api-key").value=profile?(host?.readProfileKey?.(profile.id)??(profile.id===state.activeApiProfileId?host?.readKey()||"":"")):"";
+ const model=api.model||"";
  if(model){$("api-model").innerHTML=`<option value="${esc(model)}">${esc(model)}（已保存）</option>`;$("api-model").disabled=false;apiConnection={fingerprint:apiFingerprint(),models:[model]};$("save-api").disabled=false;}
  $("api-status").textContent=model?"使用已保存的模型；连接可重新获取模型列表":"连接后选择可用模型";
 }
+function useApiProfile(id){
+ const profile=state.apiProfiles.find(p=>p.id===id);if(!profile)return;
+ const previousApi=state.api,previousId=state.activeApiProfileId,previousKey=host?.readKey()||"";
+ state.api={url:profile.url,model:profile.model};state.activeApiProfileId=id;
+ try{host?.saveKey(host.readProfileKey?.(id)||"");if(!persist()){state.api=previousApi;state.activeApiProfileId=previousId;host?.saveKey(previousKey);return;}apiEditingProfileId=id;initializeApiForm();updatePreview();$("api-status").textContent="已切换 · "+profile.name;toast("正在使用："+profile.name);}catch(e){state.api=previousApi;state.activeApiProfileId=previousId;host?.saveKey(previousKey);toast("切换失败："+e.message);}
+}
+$("api-profile").onchange=()=>{const id=$("api-profile").value;if(id)useApiProfile(id);else{apiEditingProfileId="";initializeApiForm();}};
+$("new-api-profile").onclick=()=>{apiEditingProfileId="";initializeApiForm();$("api-profile-name").focus();};
+$("delete-api-profile").onclick=()=>{
+ const profile=state.apiProfiles.find(p=>p.id===apiEditingProfileId);if(!profile||!confirm("删除 API 配置“"+profile.name+"”？"))return;
+ const previous=state;state={...state,apiProfiles:state.apiProfiles.filter(p=>p.id!==profile.id)};
+ if(state.activeApiProfileId===profile.id){state.activeApiProfileId="";state.api={url:"",model:""};}
+ if(!persist()){state=previous;return;}host?.removeProfileKey?.(profile.id);if(previous.activeApiProfileId===profile.id)host?.saveKey("");
+ if(!state.activeApiProfileId&&state.apiProfiles.length){useApiProfile(state.apiProfiles[0].id);}else{apiEditingProfileId=state.activeApiProfileId||"";initializeApiForm();updatePreview();}toast("配置已删除");
+};
 $("api-url").oninput=invalidateApiConnection;$("api-key").oninput=invalidateApiConnection;
 $("api-model").onchange=()=>{$("save-api").disabled=!apiConnection||apiConnection.fingerprint!==apiFingerprint()||!apiConnection.models.includes($("api-model").value);};
 $("connect-api").onclick=async()=>{
@@ -390,16 +464,19 @@ $("connect-api").onclick=async()=>{
  finally{clearTimeout(timeout);if(serial===apiConnectSerial){apiConnectController=null;button.disabled=false;button.textContent="连接 API";}}
 };
 $("save-api").onclick=()=>{
- const model=$("api-model").value;
+ const model=$("api-model").value,name=$("api-profile-name").value.trim()||"API 配置 "+(state.apiProfiles.length+1);
  if(!apiConnection||apiConnection.fingerprint!==apiFingerprint()||!apiConnection.models.includes(model)){toast("请先连接并选择模型");return;}
- const previousApi=state.api,previousKey=host?.readKey()||"";
- try{host?.saveKey($("api-key").value.trim());state.api={url:$("api-url").value.trim(),model};if(!persist()){state.api=previousApi;host?.saveKey(previousKey);return;}updatePreview();$("api-status").textContent="已保存 · "+model;toast("API 设置已保存");}catch(e){state.api=previousApi;host?.saveKey(previousKey);toast("保存失败："+e.message);}
+ const id=apiEditingProfileId||uid(),profile={id,name,url:$("api-url").value.trim(),model},previous=state,previousKey=host?.readKey()||"",previousProfileKey=host?.readProfileKey?.(id)||"",existed=state.apiProfiles.some(p=>p.id===id);
+ try{
+  const profiles=validateApiProfiles(existed?state.apiProfiles.map(p=>p.id===id?profile:p):[...state.apiProfiles,profile]);host?.saveProfileKey?.(id,$("api-key").value.trim());host?.saveKey($("api-key").value.trim());state={...state,apiProfiles:profiles,activeApiProfileId:id,api:{url:profile.url,model}};
+  if(!persist()){state=previous;if(existed)host?.saveProfileKey?.(id,previousProfileKey);else host?.removeProfileKey?.(id);host?.saveKey(previousKey);return;}
+  apiEditingProfileId=id;renderApiProfiles();$("api-profile-name").value=name;updatePreview();$("api-status").textContent="已保存并使用 · "+name;toast("API 配置已保存并使用");
+ }catch(e){state=previous;if(existed)host?.saveProfileKey?.(id,previousProfileKey);else host?.removeProfileKey?.(id);host?.saveKey(previousKey);toast("保存失败："+e.message);}
 };
 initializeApiForm();
 window.LittleTheaterUI={receiveState(data){
- const drafts=Array.from(document.querySelectorAll('[data-saved-text]')).map(field=>({id:field.dataset.savedText,text:field.value,title:document.querySelector(`[data-saved-title="${field.dataset.savedText}"]`)?.value}));
- state=data;upgradeAffixes(state);initializeAppearance(state);renderAppearance();if(!state.promptPresets?.length)state.promptPresets=[defaultPreset()];state.promptPresets=upgradeBuiltInPresets(state.promptPresets);if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
- renderSaved();for(const draft of drafts){const field=document.querySelector(`[data-saved-text="${draft.id}"]`),title=document.querySelector(`[data-saved-title="${draft.id}"]`);if(field)field.value=draft.text;if(title&&draft.title!==undefined)title.value=draft.title;}
+ state=data;upgradeAffixes(state);upgradeUserData(state);initializeAppearance(state);renderAppearance();if(!state.promptPresets?.length)state.promptPresets=[defaultPreset()];state.promptPresets=upgradeBuiltInPresets(state.promptPresets);if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
+ renderSaved();if($("association-dialog").open)renderAssociations();
 }};
 renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();
 if(JSON.stringify(state)!==initialStateBeforeUpgrade)persist();
