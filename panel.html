@@ -91,8 +91,8 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
       <label class="label" for="prompt-preset">正在使用</label><select id="prompt-preset"></select>
       <label class="label" for="preset-name">预设名称</label><input id="preset-name" maxlength="80" placeholder="给预设起一个名字">
       <label class="label" for="preset-system">内置提示词 / 系统指令</label><textarea id="preset-system" class="preset-editor" placeholder="规定如何把用户脑洞整理成小剧场创作指令……"></textarea>
-      <div class="preset-fields"><div><label class="label" for="preset-words">指令目标字数</label><input id="preset-words" type="number" min="50" max="10000" step="50"></div><div><label class="label" for="preset-tokens">最大输出 token</label><input id="preset-tokens" type="number" min="128" max="16000" step="128"></div></div>
-      <p class="note" style="margin-top:8px">这里控制生成指令的长度，不是酒馆最终剧情的字数。token 上限较小时，指令可能被截断。</p>
+      <input id="preset-words" type="hidden"><label class="label" for="preset-tokens">最大输出 token</label><input id="preset-tokens" type="number" min="128" max="16000" step="128">
+      <p class="note" style="margin-top:8px">预设按原文发送，不额外追加字数要求。输出 token 上限较小时，指令可能被截断。</p>
       <div class="settings-actions"><button id="save-preset" class="primary">保存并使用</button><button id="new-preset">＋ 新建预设</button><button id="reset-preset" class="ghost">恢复内置提示词</button><button id="delete-preset" class="ghost danger">删除预设</button></div>
     </div>
     <div class="settings-section">
@@ -141,9 +141,17 @@ let batchController=null,activeSnapshot=null;
 const legacyBuiltInPrompt="你是小剧场作者。根据给定的角色资料、用户设定、相关聊天与本次脑洞，写一篇简短完整的小剧场。保持人物性格与关系一致，不擅自改变人物设定。围绕本次情境展开，使用自然的动作、对话和少量必要的环境描写。只输出故事正文，不要输出思考过程、创作说明、总结、状态栏、手机面板或额外的 HTML，除非本次脑洞明确要求。不要复述输入指令或大段重复已有聊天。";
 const previousBuiltInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。前缀、后缀里的创作要求应保留或自然融入最终指令，交给酒馆角色执行，不在本次生成中直接演出。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
 const previousIdeaOnlyPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，而不是提前写出小剧场正文。结合提供的角色资料、用户设定和最近聊天理解人物关系，保持用户的核心脑洞、指定情境与要求，不擅自编造重要的人物经历或关系。将脑洞整理清楚，按需要说明场景、参与者、互动重点、氛围及写作要求；未指定的部分只作必要的补充，不替角色安排具体台词或预先决定剧情结局。仅根据用户本次输入的脑洞整理指令，不读取、改写或补入前缀和后缀；前后缀由界面在发送时单独拼接。只输出完整、可直接发送的创作指令，不附解释、分析、思考过程、故事正文或状态栏，也不反问用户。";
-const builtInPrompt="你是小剧场创作指令整理助手。仅把用户本次输入的脑洞整理成可直接发送给酒馆角色的创作指令，不生成故事正文。保留用户明确写出的情境、参与者、事件、限制和要求；仅补充必要的连接语，使表达清晰，不为凑字数添加新的剧情要求。角色资料、用户设定和最近聊天只用于辨认人物与已有关系，不用于推断或规定角色在本次情境下的态度。禁止自行指定角色的初始态度、情绪、心理、反应、具体台词、选择、行动路线、情绪转变或结局；不要安排角色先如何再如何、从某种态度转变为另一种态度。用户明确指定的反应或情绪要求可以原样保留，未指定的一律留白，由酒馆角色依据人设和现场情境自行发挥。不要追加描写某种情绪变化、逐渐接受某事等引导角色反应的要求。只整理用户的脑洞，不读取、改写或补入前缀和后缀，前后缀由界面另行拼接。只输出整理后的创作指令，不附解释、分析、思考过程、状态栏或反问。";
-function upgradeBuiltInPresets(items){return items.map(p=>[legacyBuiltInPrompt,previousBuiltInPrompt,previousIdeaOnlyPrompt].includes(p.systemPrompt)?{...p,systemPrompt:builtInPrompt,name:p.name==="简短小剧场"?"小剧场指令生成":p.name}:p);}
+const previousNoAttitudePrompt="你是小剧场创作指令整理助手。仅把用户本次输入的脑洞整理成可直接发送给酒馆角色的创作指令，不生成故事正文。保留用户明确写出的情境、参与者、事件、限制和要求；仅补充必要的连接语，使表达清晰，不为凑字数添加新的剧情要求。角色资料、用户设定和最近聊天只用于辨认人物与已有关系，不用于推断或规定角色在本次情境下的态度。禁止自行指定角色的初始态度、情绪、心理、反应、具体台词、选择、行动路线、情绪转变或结局；不要安排角色先如何再如何、从某种态度转变为另一种态度。用户明确指定的反应或情绪要求可以原样保留，未指定的一律留白，由酒馆角色依据人设和现场情境自行发挥。不要追加描写某种情绪变化、逐渐接受某事等引导角色反应的要求。只整理用户的脑洞，不读取、改写或补入前缀和后缀，前后缀由界面另行拼接。只输出整理后的创作指令，不附解释、分析、思考过程、状态栏或反问。";
+const builtInPrompt="你是小剧场创作指令编写助手。你的任务是把用户输入的脑洞整理成一段可直接发送给酒馆角色、让角色据此创作小剧场的指令，保持用户的核心脑洞、指定情境与要求，严格禁止擅自编造重要的人物对于剧情的态度，不替角色安排具体台词或预先决定剧情结局。\n仅根据用户本次输入的脑洞整理指令，不读取、改写或补入前缀和后缀；前后缀由界面在发送时单独拼接。\n$所有称呼严格用user和char代替，禁止出现人名";
+function upgradeBuiltInPresets(items){return items.map(p=>[legacyBuiltInPrompt,previousBuiltInPrompt,previousIdeaOnlyPrompt,previousNoAttitudePrompt].includes(p.systemPrompt)?{...p,systemPrompt:builtInPrompt,name:p.name==="简短小剧场"?"小剧场指令生成":p.name}:p);}
 const defaultPreset=()=>({id:"builtin-short",name:"小剧场指令生成",systemPrompt:builtInPrompt,targetWords:300,maxTokens:1024});
+function upgradePromptState(data){
+ if(!Array.isArray(data.promptPresets)||!data.promptPresets.length)data.promptPresets=[defaultPreset()];
+ data.promptPresets=upgradeBuiltInPresets(data.promptPresets);
+ if(!data.promptPresets.some(p=>p.id===data.activePresetId))data.activePresetId=data.promptPresets[0].id;
+ if(!(data.verbatimPromptVersion>=1)){data.promptPresets.find(p=>p.id===data.activePresetId).systemPrompt=builtInPrompt;data.verbatimPromptVersion=1;}
+}
+
 
 const palettes={day:[{id:"cream",name:"奶油手账",note:"暖白 · 焦糖",bg:"#f4efe5",card:"#fffcf5",accent:"#8a6945",soft:"#e9dac6"},{id:"sakura",name:"浅樱花笺",note:"樱粉 · 玫瑰",bg:"#f6edf1",card:"#fffbfd",accent:"#a46385",soft:"#eed4e1"},{id:"mint",name:"青柠纸页",note:"浅绿 · 橄榄",bg:"#eef3e9",card:"#fcfff7",accent:"#607f48",soft:"#dae8ce"},{id:"sky",name:"晴空来信",note:"雾蓝 · 天青",bg:"#edf3f8",card:"#fbfdff",accent:"#527fa6",soft:"#d5e5f2"}],night:[{id:"violet",name:"夜紫微光",note:"墨紫 · 薰衣草",bg:"#171820",card:"#292a36",accent:"#c9b5ff",soft:"#332b44"},{id:"rose",name:"暮色玫瑰",note:"烟粉 · 莓紫",bg:"#231a20",card:"#3b2c35",accent:"#f0b5ce",soft:"#503343"},{id:"forest",name:"松林夜语",note:"深绿 · 鼠尾草",bg:"#16201d",card:"#2a3932",accent:"#b4d9b0",soft:"#354b37"},{id:"ocean",name:"深海星光",note:"藏蓝 · 冰蓝",bg:"#131e29",card:"#26384a",accent:"#add6f5",soft:"#304b62"}]};
 const defaults=()=>({prefixes:[{id:"p1",name:"人物不跑偏",text:"依据角色的性格、经历与关系描写人物，保持行为和语言的一致性。"},{id:"p2",name:"细腻叙事",text:"使用细腻、自然的叙事，借助动作、对话和环境表现情绪。"}],suffixes:[{id:"s2",name:"开放结尾",text:"结尾留下可以继续发展的余地，不要用总结句收束。"},{id:"s3",name:"只输出正文",text:"只输出故事正文，不要解释创作过程。"}],groups:[],saved:[],replies:[],theme:"violet",api:{url:"",model:""}});
@@ -165,9 +173,7 @@ function initializeAppearance(data){
 }
 initializeAppearance(state);
 state.api||={url:"",model:""};
-if(!Array.isArray(state.promptPresets)||!state.promptPresets.length)state.promptPresets=[defaultPreset()];
-state.promptPresets=upgradeBuiltInPresets(state.promptPresets);
-if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
+upgradePromptState(state);
 let storyEditing=null,readerItem=null,storyFilterId="",tagFilters={stories:"",replies:""},collectionQueries={stories:"",replies:""};
 let selected={prefix:[],suffix:[]},results=[],editing=null,replyEditing=null,collection="stories",toastTimer,libraryKind="prefix",pickerKind="prefix",detailItem=null,resumePicker=false,pendingImport=null;
 function toast(message){$("toast").textContent=message;$("toast").classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").classList.remove("show"),3000);}
@@ -178,10 +184,10 @@ function switchTab(name){document.querySelectorAll(".tabs button").forEach(b=>{b
 function switchCollection(name){collectionQueries[collection]=$("saved-search").value;collection=name;$("saved-search").value=collectionQueries[name]||"";storyFilterId="";document.querySelectorAll("[data-collection]").forEach(b=>b.classList.toggle("active",b.dataset.collection===name));renderSaved();}
 function buildPrompt(){return $("idea").value.trim();}
 function activePreset(){return state.promptPresets.find(p=>p.id===state.activePresetId)||state.promptPresets[0];}
-function buildGenerationRequest(){const p=activePreset();return {model:state.api.model||"",messages:[{role:"system",content:p.systemPrompt+`\n\n篇幅要求：本次生成的创作指令以约 ${p.targetWords} 字为目标，简洁明确，保留必要情境与要求。这是指令本身的长度，不是最终小剧场正文的字数。不必凑满目标字数；不得为扩写而添加角色态度、情绪转变或反应路线。`},{role:"user",content:buildPrompt()}],max_tokens:p.maxTokens};}
+function buildGenerationRequest(){const p=activePreset();return {model:state.api.model||"",messages:[{role:"system",content:p.systemPrompt},{role:"user",content:buildPrompt()}],max_tokens:p.maxTokens};}
 function updatePreview(){const request=buildGenerationRequest();$("prompt-preview").textContent=`【小剧场指令生成预设：${activePreset().name}】\n${request.messages[0].content}\n\n【本次脑洞】\n${request.messages[1].content||"尚未添加内容"}\n\n输出上限：${request.max_tokens} token`;}
 function renderPresets(){const p=activePreset();$("prompt-preset").innerHTML=state.promptPresets.map(i=>`<option value="${esc(i.id)}">${esc(i.name)}</option>`).join("");$("prompt-preset").value=p.id;$("preset-name").value=p.name;$("preset-system").value=p.systemPrompt;$("preset-words").value=p.targetWords;$("preset-tokens").value=p.maxTokens;$("delete-preset").disabled=state.promptPresets.length<=1;updatePreview();}
-function savePreset(announce=true){const p=activePreset(),name=$("preset-name").value.trim(),systemPrompt=$("preset-system").value.trim(),targetWords=Number($("preset-words").value),maxTokens=Number($("preset-tokens").value);if(!name||!systemPrompt){toast("请填写预设名称和提示词");return false;}if(!Number.isInteger(targetWords)||targetWords<50||targetWords>10000||!Number.isInteger(maxTokens)||maxTokens<128||maxTokens>16000){toast("字数范围为 50–10000，输出上限范围为 128–16000 token");return false;}Object.assign(p,{name,systemPrompt,targetWords,maxTokens});if(!persist())return false;renderPresets();if(announce)toast("提示词预设已保存并使用");return true;}
+function savePreset(announce=true){const p=activePreset(),name=$("preset-name").value.trim(),systemPrompt=$("preset-system").value,targetWords=Number($("preset-words").value),maxTokens=Number($("preset-tokens").value);if(!name||!systemPrompt.trim()){toast("请填写预设名称和提示词");return false;}if(!Number.isInteger(targetWords)||targetWords<50||targetWords>10000||!Number.isInteger(maxTokens)||maxTokens<128||maxTokens>16000){toast("输出上限范围为 128–16000 token");return false;}Object.assign(p,{name,systemPrompt,targetWords,maxTokens});if(!persist())return false;renderPresets();if(announce)toast("提示词预设已保存并使用");return true;}
 
 function addEntry(kind,id){const entry=source(kind).find(i=>i.id===id);if(!entry)return;selected[kind].push({...entry,selectionId:uid()});renderSelection();}
 function addGroup(id){const group=state.groups.find(i=>i.id===id);if(!group)return;for(const kind of ["prefix","suffix"])selected[kind].push(...group[kind].map(i=>({...i,selectionId:uid()})));renderSelection();toast("已添加组合："+group.name);}
@@ -336,6 +342,7 @@ function validateBackupData(data){
   cleaned.promptPresets=upgradeBuiltInPresets(cleaned.promptPresets);
   if(!cleaned.promptPresets.length)throw Error("至少需要一组提示词预设");
   cleaned.activePresetId=cleaned.promptPresets.some(p=>p.id===data.activePresetId)?data.activePresetId:cleaned.promptPresets[0].id;
+  if(data.verbatimPromptVersion>=1)cleaned.verbatimPromptVersion=1;upgradePromptState(cleaned);
   if(data.builtInAffixesVersion>=2)cleaned.builtInAffixesVersion=Math.min(3,data.builtInAffixesVersion);
   upgradeAffixes(cleaned);
   return cleaned;
@@ -476,7 +483,7 @@ $("save-api").onclick=()=>{
 };
 initializeApiForm();
 window.LittleTheaterUI={receiveState(data){
- state=data;upgradeAffixes(state);upgradeUserData(state);initializeAppearance(state);renderAppearance();if(!state.promptPresets?.length)state.promptPresets=[defaultPreset()];state.promptPresets=upgradeBuiltInPresets(state.promptPresets);if(!state.promptPresets.some(p=>p.id===state.activePresetId))state.activePresetId=state.promptPresets[0].id;
+ state=data;upgradeAffixes(state);upgradeUserData(state);initializeAppearance(state);renderAppearance();upgradePromptState(state);
  renderSaved();if($("association-dialog").open)renderAssociations();
 }};
 renderPresets();renderSelection();renderLibrary();renderResults();renderSaved();
