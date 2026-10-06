@@ -6,7 +6,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Q0126",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "homePage": "https://github.com/Q0126/sillytavern-little-theater",
   "auto_update": true,
   "minimum_client_version": "1.13.0"

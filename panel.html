@@ -28,12 +28,13 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 .saved-tools{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:8px}.saved-tools button{padding:10px 6px}.preset-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.preset-fields .label{margin-top:12px}.settings-section{margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}.settings-section h3{font-size:16px}.preset-editor{min-height:190px}.import-options{display:grid;gap:10px;margin-top:16px}.import-options label{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer}.import-options input{width:auto;margin-top:5px;accent-color:var(--accent)}.import-options strong{font-size:13px}.import-options small{display:block;color:var(--muted);font-size:11px}.backup-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.backup-stats span{background:var(--card);padding:9px 12px;border-radius:10px;font-size:12px}.backup-status{font-size:12px;color:var(--muted);margin-top:10px}.settings-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.settings-actions button{font-size:12px;padding:8px 11px}
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.changelog-button{margin-left:auto;flex:none;white-space:nowrap;font-size:12px;padding:8px 11px;background:var(--panel);color:var(--accent)}.changelog-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}.release-list{margin-top:16px;max-height:52dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}.release-entry{padding:16px 0;border-top:1px solid var(--line)}.release-entry:first-child{padding-top:0;border-top:0}.release-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.release-heading h3{color:var(--accent)}.release-heading time{margin-left:auto;color:var(--muted);font-size:11px}.release-title{font-size:13px;font-weight:600;margin-top:8px}.release-entry ul{margin:9px 0 0;padding-left:19px;font-size:12px;line-height:1.8;color:var(--muted)}.release-entry li+li{margin-top:5px}
 </style>
 </head>
 <body>
 <main class="app">
   <header class="header">
-    <div class="logo" aria-hidden="true">✦</div><h1>脑洞小剧场</h1>
+    <div class="logo" aria-hidden="true">✦</div><h1>脑洞小剧场</h1><button id="open-changelog" class="changelog-button" aria-haspopup="dialog" aria-controls="changelog-dialog">更新日志</button>
 
   </header>
   <div class="appearance-bar"><div class="mode-switch" aria-label="日间夜间模式"><button data-mode="day">☀ 日间</button><button data-mode="night">☾ 夜间</button></div><button id="beautify" class="beautify">✧ 美化 · <span id="palette-name"></span></button></div>
@@ -92,6 +93,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
     </div>
   </div></section>
 </main>
+<dialog id="changelog-dialog" aria-labelledby="changelog-heading"><div class="row between"><h2 id="changelog-heading">更新日志</h2><button class="icon" data-close="changelog-dialog" aria-label="关闭更新日志">✕</button></div><div class="changelog-summary"><span id="changelog-version" class="tag">正在读取版本…</span><span class="note">最近更新在最上方</span></div><div id="changelog-content" class="release-list" aria-live="polite"></div><button id="retry-changelog" class="small" style="margin-top:12px" hidden>重新加载</button></dialog>
 <dialog id="story-dialog"><form id="story-form"><div class="row between"><h2>保存小剧场指令</h2><button type="button" class="icon" data-close="story-dialog" aria-label="关闭">✕</button></div><label class="label" for="story-title">标题</label><input id="story-title" maxlength="100" required placeholder="给小剧场指令起个名字"><label class="label" for="story-text">指令内容</label><textarea id="story-text" required placeholder="粘贴或写下想保存的小剧场指令……"></textarea><div class="dialog-actions"><button type="button" data-close="story-dialog">取消</button><button class="primary" type="submit">保存指令</button></div></form></dialog>
 <dialog id="import-dialog"><div class="row between"><h2>导入备份</h2><button class="icon" data-close="import-dialog" aria-label="关闭">✕</button></div><p id="import-file-name" class="note" style="margin-top:10px"></p><div id="import-stats" class="backup-stats"></div><div class="import-options"><label><input type="radio" name="import-mode" value="merge" checked><span><strong>合并导入</strong><small>添加新的条目和收藏，保留现有配色与 API 设置。相同内容不会重复添加。</small></span></label><label><input type="radio" name="import-mode" value="replace"><span><strong>覆盖恢复</strong><small>用备份中的内容与设置替换当前已保存的数据。</small></span></label></div><div class="dialog-actions"><button data-close="import-dialog">取消</button><button id="confirm-import" class="primary">确认导入</button></div></dialog>
 <dialog id="appearance-dialog"><div class="row between"><h2 id="appearance-heading">美化</h2><button class="icon" data-close="appearance-dialog" aria-label="关闭">✕</button></div><p class="note" style="margin-top:8px">日间与夜间分别记住你选择的配色。</p><div class="settings-actions"><button id="import-theme" class="primary">↑ 导入美化</button><button id="export-theme">↓ 导出当前美化</button></div><input id="theme-file" type="file" accept=".json,application/json" hidden><p class="note" style="margin-top:10px">导出后可修改文件里的名称、日夜模式和色值，再导入使用。</p><p id="theme-status" class="backup-status" role="status"></p><div id="palette-list" class="palette-grid"></div><button id="delete-current-theme" class="small ghost danger" style="margin-top:16px" hidden>删除当前自定义美化</button></dialog>
@@ -329,6 +331,20 @@ $("new-preset").onclick=()=>{if(!savePreset(false))return;const p={...defaultPre
 $("reset-preset").onclick=()=>{$("preset-system").value=builtInPrompt;$("preset-words").value=300;$("preset-tokens").value=1024;toast("已填入内置提示词，点击“保存并使用”生效");};
 $("delete-preset").onclick=()=>{if(state.promptPresets.length<=1){toast("至少保留一组预设");return;}if(!confirm("删除当前提示词预设？"))return;state.promptPresets=state.promptPresets.filter(p=>p.id!==state.activePresetId);state.activePresetId=state.promptPresets[0].id;persist();renderPresets();};
 $("export-backup").onclick=exportBackup;$("import-backup").onclick=()=>{$("backup-file").value="";$("backup-file").click();};$("backup-file").onchange=()=>prepareImport($("backup-file").files[0]);$("confirm-import").onclick=confirmImport;
+let changelogPromise=null;
+async function openChangelog(){
+ const dialog=$("changelog-dialog");if(!dialog.open)dialog.showModal();
+ $("changelog-content").textContent="正在读取更新日志…";$("retry-changelog").hidden=true;
+ try{
+  changelogPromise||=fetch(new URL("./changelog.json",location.href),{cache:"no-store"}).then(response=>{if(!response.ok)throw Error("更新日志加载失败");return response.json();});
+  const data=await changelogPromise;
+  if(data?.app!=="little-theater-changelog"||data.version!==1||!Array.isArray(data.releases)||!data.releases.length||data.releases.length>100)throw Error("更新日志格式无效");
+  for(const release of data.releases){if(typeof release.version!=="string"||typeof release.date!=="string"||typeof release.title!=="string"||!Array.isArray(release.changes)||release.changes.some(item=>typeof item!=="string"))throw Error("更新日志条目无效");}
+  $("changelog-version").textContent="当前版本 · "+data.releases[0].version;
+  $("changelog-content").innerHTML=data.releases.map((release,index)=>`<article class="release-entry"><div class="release-heading"><h3>v${esc(release.version)}</h3>${index===0?'<span class="tag">当前版本</span>':""}<time>${esc(release.date)}</time></div><p class="release-title">${esc(release.title)}</p><ul>${release.changes.map(item=>`<li>${esc(item)}</li>`).join("")}</ul></article>`).join("");
+ }catch(e){changelogPromise=null;$("changelog-version").textContent="暂时无法读取版本";$("changelog-content").textContent=e.message+"，可点击重新加载。";$("retry-changelog").hidden=false;}
+}
+$("open-changelog").onclick=openChangelog;$("retry-changelog").onclick=openChangelog;
 $("beautify").onclick=()=>{renderAppearance();$("appearance-dialog").showModal();};
 $("import-theme").onclick=()=>{$("theme-file").value="";$("theme-file").click();};$("theme-file").onchange=()=>importTheme($("theme-file").files[0]);$("export-theme").onclick=exportCurrentTheme;$("delete-current-theme").onclick=deleteCurrentTheme;
 $("picker-new").onclick=()=>openEditor(pickerKind);
