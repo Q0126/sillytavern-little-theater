@@ -2,7 +2,7 @@ import { chatIdentity, collectContext, requestCompletion, requestModels, upgrade
 import { upgradeUserData } from './data-core.js';
 
 const MODULE = 'little_theater_v1';
-const PANEL_URL = new URL('./panel.html?v=1.3.2', import.meta.url).href;
+const PANEL_URL = new URL('./panel.html?v=1.3.3', import.meta.url).href;
 let shell, frame, settings, sending = false, tavernBusy = false, observer, scrollLock;
 const clone = value => JSON.parse(JSON.stringify(value));
 const getContext = () => SillyTavern.getContext();
