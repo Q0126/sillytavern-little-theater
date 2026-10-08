@@ -1,8 +1,10 @@
 import { chatIdentity, collectContext, requestCompletion, requestModels, upgradeAffixes } from './core.mjs';
 import { upgradeUserData, snapshotCollectedMessage } from './data-core.js';
 
+import { CURRENT_VERSION } from './version-core.js';
+
 const MODULE = 'little_theater_v1';
-const PANEL_URL = new URL('./panel.html?v=1.3.4', import.meta.url).href;
+const PANEL_URL = new URL('./panel.html?v=1.3.5', import.meta.url).href;
 let shell, frame, settings, sending = false, tavernBusy = false, observer, scrollLock;
 const clone = value => JSON.parse(JSON.stringify(value));
 const getContext = () => SillyTavern.getContext();
@@ -196,6 +198,7 @@ async function initialize() {
     saveSettings();
     globalThis.LittleTheaterHost = {
         readState, saveState,
+        version: CURRENT_VERSION,
         readKey: () => settings.apiKey || '',
         saveKey: key => { settings.apiKey = String(key || ''); saveSettings(); },
         readProfileKey: id => Object.hasOwn(settings.profileKeys, id) ? settings.profileKeys[id] : '',

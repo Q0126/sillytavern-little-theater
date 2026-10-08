@@ -35,7 +35,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 <body>
 <main class="app">
   <header class="header">
-    <div class="logo" aria-hidden="true">✦</div><h1>脑洞小剧场</h1><button id="open-changelog" class="changelog-button" aria-haspopup="dialog" aria-controls="changelog-dialog">更新日志</button>
+    <div class="logo" aria-hidden="true">✦</div><h1>脑洞小剧场</h1><button id="open-changelog" class="changelog-button" aria-haspopup="dialog" aria-controls="changelog-dialog">v1.3.5 · 更新</button>
 
   </header>
   <div class="appearance-bar"><div class="mode-switch" aria-label="日间夜间模式"><button data-mode="day">☀ 日间</button><button data-mode="night">☾ 夜间</button></div><button id="beautify" class="beautify">✧ 美化 · <span id="palette-name"></span></button></div>
@@ -102,7 +102,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
     </div>
   </div></section>
 </main>
-<dialog id="changelog-dialog" aria-labelledby="changelog-heading"><div class="row between"><h2 id="changelog-heading">更新日志</h2><button class="icon" data-close="changelog-dialog" aria-label="关闭更新日志">✕</button></div><div class="changelog-summary"><span id="changelog-version" class="tag">正在读取版本…</span><span class="note">最近更新在最上方</span></div><div id="changelog-content" class="release-list" aria-live="polite"></div><button id="retry-changelog" class="small" style="margin-top:12px" hidden>重新加载</button></dialog>
+<dialog id="changelog-dialog" aria-labelledby="changelog-heading"><div class="row between"><h2 id="changelog-heading">更新日志</h2><button class="icon" data-close="changelog-dialog" aria-label="关闭更新日志">✕</button></div><div class="changelog-summary"><span id="changelog-version" class="tag">正在读取版本…</span><span id="changelog-latest" class="tag">最新版本 · 尚未检查</span></div><p id="update-status" class="note" role="status" style="margin:10px 0"></p><div class="settings-actions"><button id="check-updates" class="small primary">检查更新</button><a class="small" href="https://github.com/Q0126/sillytavern-little-theater" target="_blank" rel="noopener noreferrer">插件仓库 ↗</a></div><p id="update-help" class="note" style="margin:10px 0" hidden>请到酒馆「扩展」中更新脑洞小剧场，然后刷新页面；刷新后这里会显示新版版本号。</p><div id="changelog-content" class="release-list" aria-live="polite"></div><button id="retry-changelog" class="small" style="margin-top:12px" hidden>重新加载</button></dialog>
 <dialog id="story-dialog"><form id="story-form"><div class="row between"><h2 id="story-heading">保存小剧场指令</h2><button type="button" class="icon" data-close="story-dialog" aria-label="关闭">✕</button></div><label class="label" for="story-title">标题</label><input id="story-title" maxlength="100" required placeholder="给小剧场指令起个名字"><label class="label" for="story-tags">标签</label><input id="story-tags" maxlength="900" placeholder="例如：番外，甜文，校园（逗号分隔）"><label class="label" for="story-text" id="story-text-label">指令内容</label><textarea id="story-text" required placeholder="粘贴或写下想保存的小剧场指令……"></textarea><div class="dialog-actions"><button type="button" data-close="story-dialog">取消</button><button id="story-submit" class="primary" type="submit">保存指令</button></div></form></dialog>
 <dialog id="import-dialog"><div class="row between"><h2>导入备份</h2><button class="icon" data-close="import-dialog" aria-label="关闭">✕</button></div><p id="import-file-name" class="note" style="margin-top:10px"></p><div id="import-stats" class="backup-stats"></div><div class="import-options"><label><input type="radio" name="import-mode" value="merge" checked><span><strong>合并导入</strong><small>添加新的条目和收藏，保留现有配色与 API 设置。相同内容不会重复添加。</small></span></label><label><input type="radio" name="import-mode" value="replace"><span><strong>覆盖恢复</strong><small>用备份中的内容与设置替换当前已保存的数据。</small></span></label></div><div class="dialog-actions"><button data-close="import-dialog">取消</button><button id="confirm-import" class="primary">确认导入</button></div></dialog>
 <dialog id="appearance-dialog"><div class="row between"><h2 id="appearance-heading">美化</h2><button class="icon" data-close="appearance-dialog" aria-label="关闭">✕</button></div><p class="note" style="margin-top:8px">日间与夜间分别记住你选择的配色。</p><div class="settings-actions"><button id="import-theme" class="primary">↑ 导入美化</button><button id="export-theme">↓ 导出当前美化</button></div><input id="theme-file" type="file" accept=".json,application/json" hidden><p class="note" style="margin-top:10px">导出后可修改文件里的名称、日夜模式和色值，再导入使用。</p><p id="theme-status" class="backup-status" role="status"></p><div id="palette-list" class="palette-grid"></div><button id="delete-current-theme" class="small ghost danger" style="margin-top:16px" hidden>删除当前自定义美化</button></dialog>
@@ -131,6 +131,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 <script type="module">
 import { normalizeTags, validateApiProfiles, upgradeUserData, mergeTaggedRecords, normalizeCollectionFilter } from "./data-core.js";
 import { composeInstruction, upgradeAffixes } from "./core.mjs";
+import { CURRENT_VERSION, UPDATE_URL, compareVersions, fetchChangelog, releaseLabel } from "./version-core.js";
 import { THEME_VARIABLES, validateThemeCatalog, themeSignature, makeThemeFile, parseThemeFile } from "./theme-core.js";
 "use strict";
 const $=id=>document.getElementById(id);
@@ -407,20 +408,40 @@ $("new-preset").onclick=()=>{if(!savePreset(false))return;const p={...defaultPre
 $("reset-preset").onclick=()=>{$("preset-system").value=builtInPrompt;$("preset-words").value=300;$("preset-tokens").value=1024;toast("已填入内置提示词，点击“保存并使用”生效");};
 $("delete-preset").onclick=()=>{if(state.promptPresets.length<=1){toast("至少保留一组预设");return;}if(!confirm("删除当前提示词预设？"))return;state.promptPresets=state.promptPresets.filter(p=>p.id!==state.activePresetId);state.activePresetId=state.promptPresets[0].id;persist();renderPresets();};
 $("export-backup").onclick=exportBackup;$("import-backup").onclick=()=>{$("backup-file").value="";$("backup-file").click();};$("backup-file").onchange=()=>prepareImport($("backup-file").files[0]);$("confirm-import").onclick=confirmImport;
-let changelogPromise=null;
+const installedVersion=host?.version||CURRENT_VERSION;
+let localReleases=[],remoteReleases=[],changelogPromise=null,updatePromise=null;
+$("open-changelog").textContent="v"+installedVersion+" · 更新";
+$("changelog-version").textContent="当前运行 · v"+installedVersion;
+function renderChangelog(){
+ const records=new Map(localReleases.map(r=>[r.version,r]));for(const r of remoteReleases)records.set(r.version,r);
+ const releases=[...records.values()].sort((a,b)=>compareVersions(b.version,a.version));
+ $("changelog-content").innerHTML=releases.map(r=>`<details class="release-entry"><summary class="release-heading"><span class="release-version">v${esc(r.version)} · ${esc(releaseLabel(r.version,installedVersion))}</span><time>${esc(r.date)}</time><span class="release-title">${esc(r.title)}</span></summary><ul>${r.changes.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></details>`).join("");
+}
+async function checkUpdates(){
+ if(updatePromise)return updatePromise;
+ $("check-updates").disabled=true;$("update-status").textContent="正在检查 GitHub 最新版本…";
+ updatePromise=(async()=>{try{
+  remoteReleases=await fetchChangelog(UPDATE_URL);
+  const latest=remoteReleases[0].version,hasUpdate=compareVersions(latest,installedVersion)>0;
+  $("changelog-latest").textContent="最新发布 · v"+latest;
+  $("update-status").textContent=hasUpdate?"有新版本：v"+installedVersion+" → v"+latest+"。展开标记为“尚未安装”的条目查看新增功能。":compareVersions(latest,installedVersion)===0?"你正在使用最新版本。":"当前运行版本比最新发布版本更新。";
+  $("update-help").hidden=!hasUpdate;$("open-changelog").textContent="v"+installedVersion+(hasUpdate?" · 有更新":" · 更新");renderChangelog();
+ }catch(e){$("update-status").textContent="暂时无法检查最新版本，请稍后重试。";if(!remoteReleases.length)$("changelog-latest").textContent="最新版本 · 检查失败";}
+ finally{$("check-updates").disabled=false;updatePromise=null;}})();
+ return updatePromise;
+}
 async function openChangelog(){
  const dialog=$("changelog-dialog");if(!dialog.open)dialog.showModal();
- $("changelog-content").textContent="正在读取更新日志…";$("retry-changelog").hidden=true;
+ $("retry-changelog").hidden=true;
+ if(!localReleases.length&&!remoteReleases.length)$("changelog-content").textContent="正在读取更新日志…";
+ const remote=checkUpdates();
  try{
-  changelogPromise||=fetch(new URL("./changelog.json",location.href),{cache:"no-store"}).then(response=>{if(!response.ok)throw Error("更新日志加载失败");return response.json();});
-  const data=await changelogPromise;
-  if(data?.app!=="little-theater-changelog"||data.version!==1||!Array.isArray(data.releases)||!data.releases.length||data.releases.length>100)throw Error("更新日志格式无效");
-  for(const release of data.releases){if(typeof release.version!=="string"||typeof release.date!=="string"||typeof release.title!=="string"||!Array.isArray(release.changes)||release.changes.some(item=>typeof item!=="string"))throw Error("更新日志条目无效");}
-  $("changelog-version").textContent="当前版本 · "+data.releases[0].version;
-  $("changelog-content").innerHTML=data.releases.map((release,index)=>`<details class="release-entry"><summary class="release-heading"><span class="release-version">v${esc(release.version)}${index===0?' · 最新':""}</span><time>${esc(release.date)}</time><span class="release-title">${esc(release.title)}</span></summary><ul>${release.changes.map(item=>`<li>${esc(item)}</li>`).join("")}</ul></details>`).join("");
- }catch(e){changelogPromise=null;$("changelog-version").textContent="暂时无法读取版本";$("changelog-content").textContent=e.message+"，可点击重新加载。";$("retry-changelog").hidden=false;}
+  changelogPromise||=fetchChangelog(new URL("./changelog.json",location.href));
+  localReleases=await changelogPromise;renderChangelog();
+ }catch(e){changelogPromise=null;$("retry-changelog").hidden=false;if(!remoteReleases.length)$("changelog-content").textContent="本地日志读取失败，可点击重新加载。";}
+ await remote;
 }
-$("open-changelog").onclick=openChangelog;$("retry-changelog").onclick=openChangelog;
+$("open-changelog").onclick=openChangelog;$("retry-changelog").onclick=openChangelog;$("check-updates").onclick=checkUpdates;
 $("beautify").onclick=()=>{renderAppearance();$("appearance-dialog").showModal();};
 $("import-theme").onclick=()=>{$("theme-file").value="";$("theme-file").click();};$("theme-file").onchange=()=>importTheme($("theme-file").files[0]);$("export-theme").onclick=exportCurrentTheme;$("delete-current-theme").onclick=deleteCurrentTheme;
 $("picker-new").onclick=()=>openEditor(pickerKind);
