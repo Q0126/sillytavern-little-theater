@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { filterCollectedText, normalizeCollectionFilter, snapshotCollectedMessage } from '../data-core.js';
+import { filterCollectedText, normalizeCollectionFilter, snapshotCollectedMessage, migrateSceneCollections, filterImagePrompt } from '../data-core.js';
 
 test('collection filtering handles multiple literal blocks, nesting, unmatched markers and disabled mode', () => {
     assert.equal(filterCollectedText('<think>推理</think>正文<think>另一段</think>结尾'), '正文结尾');
@@ -27,17 +27,15 @@ test('actual host collection saves independent copies, deduplicates, and survive
     const sandbox = { getContext: () => context, snapshotCollectedMessage, settings, crypto: { randomUUID: () => 'id-' + saved }, Date, Math, chatIdentity: () => 'chat', saveSettings: () => saved++, synchronizePanel: () => synchronized++, notify: (type, text) => messages.push([type,text]) };
     vm.runInNewContext(fn + '\n globalThis.collect=collectMessage;', sandbox);
     sandbox.collect(1, true); sandbox.collect(1, true); sandbox.collect(1, false); sandbox.collect(0, true);
-    assert.equal(settings.data.saved.length, 2);
+    assert.equal(settings.data.saved.length, 1);
     assert.equal(settings.data.replies.length, 1);
     assert.equal(settings.data.replies[0].storyId, 'instruction');
-    assert.equal(settings.data.saved[1].contentType, 'scene');
-    assert.equal(settings.data.saved[1].text, '小剧场正文');
+    assert.equal(settings.data.saved[0].contentType, undefined);
     assert.equal(context.chat[1].mes, '<think>隐藏</think>小剧场正文');
     context.chat[1].mes = '改变后的正文'; context.chat.splice(0);
-    assert.equal(settings.data.saved[1].text, '小剧场正文');
     assert.equal(settings.data.saved[0].text, '用户脑洞');
     assert.equal(settings.data.replies[0].text, '小剧场正文');
-    assert.equal(saved, 3); assert.equal(synchronized, 3);
+    assert.equal(saved, 2); assert.equal(synchronized, 2);
 });
 
 test('message scene metadata and filter survive the backup allowlist', () => {
@@ -45,12 +43,36 @@ test('message scene metadata and filter survive the backup allowlist', () => {
     const fn = html.slice(html.indexOf('const validId='), html.indexOf('\nfunction makeBackup()'));
     const defaults = JSON.parse(fs.readFileSync(new URL('../defaults.json', import.meta.url), 'utf8'));
     const record = snapshotCollectedMessage({ name: '角色', mes: '正文' }, null, 'scene-1', 10, true);
-    const sandbox = { normalizeCollectionFilter, normalizeTags: v => v || [], validateApiProfiles: v => v, upgradeUserData: () => {}, validateThemeCatalog: v => v, reservedThemeIds: () => [], paletteOptions: mode => [{id: mode === 'day' ? 'cream' : 'violet'}], upgradeBuiltInPresets: v => v, upgradePromptState: () => {}, upgradeAffixes: () => {} };
+    const sandbox = { normalizeCollectionFilter, migrateSceneCollections, normalizeTags: v => v || [], validateApiProfiles: v => v, upgradeUserData: () => {}, validateThemeCatalog: v => v, reservedThemeIds: () => [], paletteOptions: mode => [{id: mode === 'day' ? 'cream' : 'violet'}], upgradeBuiltInPresets: v => v, upgradePromptState: () => {}, upgradeAffixes: () => {} };
     vm.runInNewContext(fn + '\n globalThis.clean=validateBackupData;', sandbox);
     defaults.saved.push(record); defaults.collectionFilter = { enabled: true, start: '<hide>', end: '</hide>' };
     const output = sandbox.clean(defaults);
-    assert.equal(output.saved[0].contentType, 'scene');
-    assert.equal(output.saved[0].role, '角色');
-    assert.equal(output.saved[0].text, '正文');
-    assert.deepEqual(output.collectionFilter, defaults.collectionFilter);
+    assert.equal(output.saved.length, 0);
+    assert.equal(output.replies[0].role, '角色');
+    assert.equal(output.replies[0].text, '正文');
+    assert.deepEqual(output.collectionFilter, {...defaults.collectionFilter,imageEnabled:true});
+});
+
+
+test('image-generator instructions are removed with exact delimiters and an independent toggle', () => {
+    const text = '前文image###Scene内容;;###后文image###Scene第二段;;###结尾';
+    assert.equal(filterImagePrompt(text), '前文后文结尾');
+    assert.equal(filterImagePrompt('正文image###Scene未闭合'), '正文');
+    assert.equal(filterCollectedText(text, { enabled:false,start:'',end:'' }), '前文后文结尾');
+    assert.equal(filterCollectedText(text, { enabled:false,start:'',end:'',imageEnabled:false }), text);
+    assert.equal(filterImagePrompt('<img src="photo.jpg">正文'), '<img src="photo.jpg">正文');
+});
+
+test('misfiled scenes migrate once without losing tags, existing replies or instructions', () => {
+    const data = { saved: [
+        {id:'instruction',text:'指令',tags:[]},
+        {id:'old',contentType:'scene',text:'正文',role:'角色',tags:['校园']},
+        {id:'collision',contentType:'scene',text:'另一个正文',role:'角色',tags:['番外']},
+    ], replies:[{id:'existing',text:'正文',role:'角色',tags:['甜文']},{id:'collision',text:'别的消息',tags:[]}] };
+    assert.equal(migrateSceneCollections(data),true);
+    assert.equal(data.saved.length,1); assert.equal(data.saved[0].id,'instruction');
+    assert.deepEqual(data.replies[0].tags,['甜文','校园']);
+    assert.equal(data.replies[2].id,'collision-reply-1');
+    assert.equal(data.replies[2].text,'另一个正文');
+    assert.equal(migrateSceneCollections(data),false);
 });

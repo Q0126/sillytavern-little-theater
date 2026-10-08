@@ -19,6 +19,7 @@ export function validateApiProfiles(value = []) {
 
 export function upgradeUserData(data) {
     data.collectionFilter = normalizeCollectionFilter(data.collectionFilter);
+    migrateSceneCollections(data);
     for (const list of [data.saved || [], data.replies || []]) for (const item of list) item.tags = normalizeTags(item.tags);
     data.apiProfiles = validateApiProfiles(data.apiProfiles || []);
     if (!data.apiProfiles.length && data.api?.url && data.api?.model) {
@@ -46,16 +47,16 @@ export function mergeTaggedRecords(current, incoming, makeId, signature) {
 }
 
 export function normalizeCollectionFilter(value) {
-    if (value == null) return { enabled: true, start: '<think>', end: '</think>' };
+    if (value == null) return { enabled: true, start: '<think>', end: '</think>', imageEnabled: true };
     if (typeof value !== 'object' || typeof value.start !== 'string' || typeof value.end !== 'string' || value.start.length > 200 || value.end.length > 200) throw Error('收藏过滤标记无效');
-    const filter = { enabled: value.enabled !== false, start: value.start, end: value.end };
+    const filter = { enabled: value.enabled !== false, start: value.start, end: value.end, imageEnabled: value.imageEnabled !== false };
     if (filter.enabled && (!filter.start.trim() || !filter.end.trim() || filter.start === filter.end)) throw Error('请填写不同的开头和结尾标记，或关闭过滤');
     return filter;
 }
 
 export function filterCollectedText(text, value) {
     const filter = normalizeCollectionFilter(value);
-    const source = String(text || '');
+    const source = filter.imageEnabled ? filterImagePrompt(text) : String(text || '');
     if (!filter.enabled) return source.trim();
     let cursor = 0, output = '', depth = 0;
     while (cursor < source.length) {
@@ -80,4 +81,39 @@ export function snapshotCollectedMessage(message, filter, id, now, scene = false
     if (!text) throw Error('过滤后没有可收藏的正文');
     const role = String(message.name || (message.is_user ? '用户' : '角色'));
     return { id, title: role + ' · ' + text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 24), text, role, tags: [], created: now, updated: now, ...(scene ? { contentType: 'scene' } : { storyId }) };
+}
+
+// Image-generator instructions have literal delimiters, not HTML tags.
+export function filterImagePrompt(text) {
+    const source = String(text || '');
+    let cursor = 0, output = '';
+    while (cursor < source.length) {
+        const start = source.indexOf('image###Scene', cursor);
+        if (start === -1) return output + source.slice(cursor);
+        output += source.slice(cursor, start);
+        const end = source.indexOf(';;###', start + 'image###Scene'.length);
+        if (end === -1) return output;
+        cursor = end + ';;###'.length;
+    }
+    return output;
+}
+
+export function migrateSceneCollections(data) {
+    data.saved ||= []; data.replies ||= [];
+    const moved = new Set();
+    data.saved = data.saved.filter(item => {
+        if (item.contentType !== 'scene') return true;
+        moved.add(item.id);
+        const same = data.replies.find(r => r.text === item.text && r.role === item.role);
+        if (same) same.tags = normalizeTags([...(same.tags || []), ...(item.tags || [])]);
+        else {
+            let id = item.id, n = 1;
+            while (data.replies.some(r => r.id === id)) id = item.id.slice(0, 100) + '-reply-' + n++;
+            const { contentType, ...record } = item;
+            data.replies.push({ ...record, id, storyId: '' });
+        }
+        return false;
+    });
+    for (const reply of data.replies) if (moved.has(reply.storyId)) reply.storyId = '';
+    return moved.size > 0;
 }

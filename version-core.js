@@ -1,5 +1,5 @@
 // The version of the code loaded in this browser, independent of repository updates.
-export const CURRENT_VERSION = '1.3.5';
+export const CURRENT_VERSION = '1.4.0';
 export const UPDATE_URL = 'https://raw.githubusercontent.com/Q0126/sillytavern-little-theater/main/changelog.json';
 
 export function compareVersions(a, b) {

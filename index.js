@@ -4,7 +4,7 @@ import { upgradeUserData, snapshotCollectedMessage } from './data-core.js';
 import { CURRENT_VERSION } from './version-core.js';
 
 const MODULE = 'little_theater_v1';
-const PANEL_URL = new URL('./panel.html?v=1.3.5', import.meta.url).href;
+const PANEL_URL = new URL('./panel.html?v=1.4.0', import.meta.url).href;
 let shell, frame, settings, sending = false, tavernBusy = false, observer, scrollLock;
 const clone = value => JSON.parse(JSON.stringify(value));
 const getContext = () => SillyTavern.getContext();
@@ -150,14 +150,16 @@ function collectMessage(index, scene = false) {
     const message = context.chat[index];
     if (!message || message.is_system || (!scene && message.is_user)) return;
     try {
+        scene = !!message.is_user;
         const record = snapshotCollectedMessage(message, settings.data.collectionFilter,
             crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
             Date.now(), scene, settings.lastStoryByChat?.[chatIdentity(context)] || '');
+        if (scene) delete record.contentType;
         const list = scene ? (settings.data.saved ||= []) : (settings.data.replies ||= []);
-        if (list.some(r => r.text === record.text && r.role === record.role && (!scene || r.contentType === 'scene'))) { notify('info', '这条消息已经收藏'); return; }
+        if (list.some(r => r.text === record.text && r.role === record.role)) { notify('info', '这条消息已经收藏'); return; }
         list.unshift(record);
         saveSettings(); synchronizePanel();
-        notify('success', scene ? '消息已独立保存到小剧场收藏，删除聊天消息不会删除收藏' : '已收藏到角色回复');
+        notify('success', scene ? '用户消息已独立保存到小剧场收藏' : '已独立保存到角色回复，删除聊天消息不会删除收藏');
     } catch (error) { notify('error', error.message); }
 }
 
@@ -166,10 +168,12 @@ function installBookmarks() {
     document.querySelectorAll('#chat .mes[mesid]').forEach(element => {
         const index = Number(element.getAttribute('mesid'));
         const message = context.chat[index];
-        for (const scene of [true, false]) {
-            const cls = scene ? 'lt-scene-bookmark' : 'lt-reply-bookmark';
+        element.querySelector('.lt-scene-bookmark')?.remove();
+        for (const scene of [!!message?.is_user]) {
+            const cls = scene ? 'lt-user-bookmark' : 'lt-reply-bookmark';
+            element.querySelector(scene ? '.lt-reply-bookmark' : '.lt-user-bookmark')?.remove();
             const existing = element.querySelector('.' + cls);
-            if (!message || message.is_system || (!scene && message.is_user)) { existing?.remove(); continue; }
+            if (!message || message.is_system) { existing?.remove(); continue; }
             if (existing) continue;
             const toolbar = element.querySelector('.mes_buttons');
             if (!toolbar) continue;

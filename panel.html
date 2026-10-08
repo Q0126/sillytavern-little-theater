@@ -35,7 +35,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 <body>
 <main class="app">
   <header class="header">
-    <div class="logo" aria-hidden="true">✦</div><h1>脑洞小剧场</h1><button id="open-changelog" class="changelog-button" aria-haspopup="dialog" aria-controls="changelog-dialog">v1.3.5 · 更新</button>
+    <div class="logo" aria-hidden="true">✦</div><h1>脑洞小剧场</h1><button id="open-changelog" class="changelog-button" aria-haspopup="dialog" aria-controls="changelog-dialog">v1.4.0 · 更新</button>
 
   </header>
   <div class="appearance-bar"><div class="mode-switch" aria-label="日间夜间模式"><button data-mode="day">☀ 日间</button><button data-mode="night">☾ 夜间</button></div><button id="beautify" class="beautify">✧ 美化 · <span id="palette-name"></span></button></div>
@@ -62,7 +62,7 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
       <div class="subtabs" aria-label="收藏分类"><button class="active" data-collection="stories">小剧场 <small id="stories-count">0</small></button><button data-collection="replies">角色回复 <small id="replies-count">0</small></button></div>
       <input id="saved-search" class="search" aria-label="搜索收藏" placeholder="搜索标题、正文、角色名或标签……">
       <div class="collection-tools"><button id="add-story" class="small primary">＋ 添加指令</button><button id="add-reply" class="small primary" hidden>＋ 添加回复</button></div>
-      <details style="margin:12px 0"><summary>收藏消息过滤 · 前缀 / 后缀</summary><p class="note">只影响之后从聊天收藏的消息。删除两个标记及中间内容，不修改聊天或已有收藏。未闭合的开头标记会过滤到消息末尾。</p><label><input id="collection-filter-enabled" type="checkbox"> 启用过滤</label><label class="label" for="collection-filter-start">开头标记（前缀）</label><input id="collection-filter-start" maxlength="200" placeholder="&lt;think&gt;"><label class="label" for="collection-filter-end">结尾标记（后缀）</label><input id="collection-filter-end" maxlength="200" placeholder="&lt;/think&gt;"><div class="actions"><button id="save-collection-filter" class="small primary">保存过滤设置</button></div></details>
+      <details style="margin:12px 0"><summary>收藏消息过滤 · 前缀 / 后缀</summary><p class="note">只影响之后从聊天收藏的消息。删除两个标记及中间内容，不修改聊天或已有收藏。未闭合的开头标记会过滤到消息末尾。</p><label><input id="collection-filter-enabled" type="checkbox"> 启用过滤</label><label class="label" for="collection-filter-start">开头标记（前缀）</label><input id="collection-filter-start" maxlength="200" placeholder="&lt;think&gt;"><label class="label" for="collection-filter-end">结尾标记（后缀）</label><input id="collection-filter-end" maxlength="200" placeholder="&lt;/think&gt;"><label class="label"><input id="collection-filter-image" type="checkbox"> 过滤生图指令：image###Scene … ;;###</label><div class="actions"><button id="save-collection-filter" class="small primary">保存过滤设置</button></div></details>
       <div id="saved-tag-filter" class="tag-filter" aria-label="按标签筛选"></div><button id="clear-story-filter" class="small ghost" style="margin-bottom:12px" hidden></button>
       <div id="saved-list" class="saved-list"></div>
     </div>
@@ -129,8 +129,9 @@ body{min-height:100dvh;background:radial-gradient(ellipse at 85% 0,var(--glow),t
 <dialog id="send-dialog"><div class="row between"><h2>发送预览</h2><button type="button" class="icon" data-close="send-dialog" aria-label="关闭">✕</button></div><p class="note" style="margin-top:12px">以下指令会通过酒馆的用户发送键发出。</p><textarea id="send-text" readonly aria-label="待发送正文" style="margin-top:14px"></textarea><div class="dialog-actions"><button data-close="send-dialog">关闭</button><button class="primary" id="copy-send">复制正文</button></div></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script type="module">
-import { normalizeTags, validateApiProfiles, upgradeUserData, mergeTaggedRecords, normalizeCollectionFilter } from "./data-core.js";
+import { normalizeTags, validateApiProfiles, upgradeUserData, mergeTaggedRecords, normalizeCollectionFilter, filterImagePrompt, migrateSceneCollections } from "./data-core.js";
 import { composeInstruction, upgradeAffixes } from "./core.mjs";
+import { buildReplyDocument } from "./render-core.js";
 import { CURRENT_VERSION, UPDATE_URL, compareVersions, fetchChangelog, releaseLabel } from "./version-core.js";
 import { THEME_VARIABLES, validateThemeCatalog, themeSignature, makeThemeFile, parseThemeFile } from "./theme-core.js";
 "use strict";
@@ -290,8 +291,8 @@ function collectionList(kind=collection){return kind==="stories"?state.saved:sta
 function savedText(id){return collectionList().find(i=>i.id===id)?.text||"";}
 function tagMarkup(tags){return normalizeTags(tags).map(t=>`<span class="tag">${esc(t)}</span>`).join("");}
 function summaryText(text){const doc=new DOMParser().parseFromString(String(text),"text/html");doc.querySelectorAll("style,script").forEach(el=>el.remove());return (doc.body.textContent||"").replace(/```(?:html|css|javascript)?/gi,"").replace(/\s+/g," ").trim().slice(0,180)||"点击查看完整内容";}
-function renderCollectionFilter(){const f=normalizeCollectionFilter(state.collectionFilter);$("collection-filter-enabled").checked=f.enabled;$("collection-filter-start").value=f.start;$("collection-filter-end").value=f.end;}
-$("save-collection-filter").onclick=()=>{try{const f=normalizeCollectionFilter({enabled:$("collection-filter-enabled").checked,start:$("collection-filter-start").value,end:$("collection-filter-end").value});state.collectionFilter=f;if(persist())toast("收藏过滤设置已保存");}catch(e){toast(e.message);}};
+function renderCollectionFilter(){const f=normalizeCollectionFilter(state.collectionFilter);$("collection-filter-enabled").checked=f.enabled;$("collection-filter-start").value=f.start;$("collection-filter-end").value=f.end;$("collection-filter-image").checked=f.imageEnabled;}
+$("save-collection-filter").onclick=()=>{try{const f=normalizeCollectionFilter({enabled:$("collection-filter-enabled").checked,start:$("collection-filter-start").value,end:$("collection-filter-end").value,imageEnabled:$("collection-filter-image").checked});state.collectionFilter=f;if(persist())toast("收藏过滤设置已保存");}catch(e){toast(e.message);}};
 function renderSaved(){
  $("stories-count").textContent=state.saved.length;$("replies-count").textContent=state.replies.length;$("add-story").hidden=collection!=="stories";$("add-reply").hidden=collection!=="replies";
  const query=$("saved-search").value.trim().toLowerCase(),list=collectionList(),tags=[...new Set(list.flatMap(i=>i.tags||[]))].sort((a,b)=>a.localeCompare(b));
@@ -310,14 +311,10 @@ function openReader(kind,id){const item=collectionList(kind).find(i=>i.id===id);
  $("reader-links").innerHTML=kind==="replies"&&linked?`<button class="small" data-action="view-linked-story" data-id="${esc(linked.id)}">关联指令：${esc(linked.title)}</button>`:kind==="stories"&&count?`<button class="small" data-action="related-replies" data-id="${esc(id)}">查看关联回复 · ${count}</button>`:"";
  const content=$("reader-content");content.replaceChildren();
  if(kind==="replies"||item.contentType==="scene"){
-  let html=null;try{html=host?.formatReply?.(item.text,item.role);}catch{}
-  if(typeof html==="string"){
-   const parsed=new DOMParser().parseFromString(html,"text/html");parsed.querySelectorAll("script,iframe,object,embed,form,meta,link,base").forEach(el=>el.remove());for(const el of parsed.querySelectorAll("*")){for(const a of Array.from(el.attributes)){if(a.name.startsWith("on")||["srcdoc","srcset","autofocus"].includes(a.name))el.removeAttribute(a.name);}}
-   const styles=Array.from(parsed.head.querySelectorAll("style")).map(el=>el.outerHTML).join("");
-   const iframe=document.createElement("iframe");iframe.setAttribute("sandbox","");iframe.setAttribute("referrerpolicy","no-referrer");iframe.title="角色回复阅读效果";
-   const css=getComputedStyle(document.documentElement),color=v=>css.getPropertyValue(v).trim().replace(/[^#a-zA-Z0-9(),.% -]/g,"");
-   iframe.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src https: http: data:; form-action 'none'; base-uri 'none'"><style>body{margin:0;padding:16px;background:${color("--field")};color:${color("--text")};font:14px/1.9 system-ui;overflow-wrap:anywhere}img{max-width:100%;height:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}blockquote{margin:10px 0;padding-left:12px;border-left:3px solid ${color("--accent")}}a{color:${color("--accent")}}.mes_text{white-space:normal}</style>${styles}</head><body><div class="mes_text">${parsed.body.innerHTML}</div></body></html>`;content.append(iframe);
-  }else{const plain=document.createElement("div");plain.className="plain-text";plain.textContent=item.text;content.append(plain);}
+  const text=state.collectionFilter.imageEnabled?filterImagePrompt(item.text):item.text;
+  const css=getComputedStyle(document.documentElement),color=v=>css.getPropertyValue(v).trim().replace(/[^#a-zA-Z0-9(),.% -]/g,"");
+  const iframe=document.createElement("iframe");iframe.setAttribute("sandbox","");iframe.setAttribute("referrerpolicy","no-referrer");iframe.title="角色回复阅读效果";
+  iframe.srcdoc=buildReplyDocument(text,t=>host?.formatReply?.(t,item.role),DOMParser,{background:color("--field"),text:color("--text"),accent:color("--accent")});content.append(iframe);
  }else{const plain=document.createElement("div");plain.className="plain-text";plain.textContent=item.text;content.append(plain);}
  showReaderSource(false);if(!$("reader-dialog").open)$("reader-dialog").showModal();
 }
@@ -338,6 +335,7 @@ function validateBackupData(data){
   const affix=item=>{if(!item||typeof item!=="object")throw Error("前后缀条目无效");return{id:id(item.id),name:str(item.name,"名称",1000),text:str(item.text,"正文")};};
   const story=item=>{if(!item||typeof item!=="object")throw Error("收藏条目无效");return{id:id(item.id),title:str(item.title,"标题",1000),text:str(item.text,"正文"),tags:normalizeTags(item.tags),...(item.contentType==="scene"?{contentType:"scene",role:typeof item.role==="string"?item.role.slice(0,1000):""}:{}),created:date(item.created),updated:date(item.updated??item.created)};};
   const cleaned={prefixes:unique(list(data.prefixes,"前缀").map(affix),"前缀"),suffixes:unique(list(data.suffixes,"后缀").map(affix),"后缀"),groups:unique(list(data.groups,"组合").map(g=>({id:id(g.id),name:str(g.name,"组合名称",1000),prefix:list(g.prefix,"组合前缀").map(affix),suffix:list(g.suffix,"组合后缀").map(affix)})),"组合"),saved:unique(list(data.saved,"小剧场").map(story),"小剧场"),replies:unique(list(data.replies,"角色回复").map(r=>({...story(r),role:typeof r.role==="string"?r.role.slice(0,1000):"",storyId:r.storyId?id(r.storyId):""})),"角色回复"),api:{url:typeof data.api?.url==="string"?data.api.url.slice(0,4096):"",model:typeof data.api?.model==="string"?data.api.model.slice(0,1000):""},mode:["day","night"].includes(data.mode)?data.mode:"night",appearance:{day:"cream",night:"violet"},appearanceMigrated:true};
+  migrateSceneCollections(cleaned);
   cleaned.collectionFilter=normalizeCollectionFilter(data.collectionFilter);
   cleaned.apiProfiles=validateApiProfiles(data.apiProfiles||[]);cleaned.activeApiProfileId=cleaned.apiProfiles.some(p=>p.id===data.activeApiProfileId)?data.activeApiProfileId:"";
   upgradeUserData(cleaned);const activeApiProfile=cleaned.apiProfiles.find(p=>p.id===cleaned.activeApiProfileId);if(activeApiProfile)cleaned.api={url:activeApiProfile.url,model:activeApiProfile.model};

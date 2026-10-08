@@ -75,6 +75,7 @@
   "collectionFilter": {
     "enabled": true,
     "start": "<think>",
-    "end": "</think>"
+    "end": "</think>",
+    "imageEnabled": true
   }
 }
