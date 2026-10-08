@@ -10,3 +10,7 @@
 .lt-settings{padding:8px 0}.lt-settings .menu_button{width:100%;text-align:center}
 .lt-reply-bookmark,.lt-user-bookmark{background:transparent;border:0;color:inherit;font-size:inherit;cursor:pointer;opacity:.8}
 @media(max-width:600px){#lt-dialog.lt-shell{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;border-radius:16px!important}#lt-dialog .lt-bar{padding:8px 11px}}
+
+/* Reading uses almost the whole screen; the regular panel keeps its smaller window. */
+#lt-dialog.lt-shell.lt-reading{width:min(1020px,calc(100vw - 12px))!important;max-width:calc(100vw - 12px)!important;height:calc(100dvh - 12px)!important;max-height:calc(100dvh - 12px)!important;border-radius:12px!important}
+#lt-dialog.lt-reading .lt-bar{padding:5px 10px;font-size:11px}
