@@ -71,5 +71,10 @@
   "builtInAffixesVersion": 3,
   "apiProfiles": [],
   "activeApiProfileId": "",
-  "verbatimPromptVersion": 2
+  "verbatimPromptVersion": 2,
+  "collectionFilter": {
+    "enabled": true,
+    "start": "<think>",
+    "end": "</think>"
+  }
 }

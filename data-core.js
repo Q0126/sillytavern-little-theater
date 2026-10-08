@@ -18,6 +18,7 @@ export function validateApiProfiles(value = []) {
 }
 
 export function upgradeUserData(data) {
+    data.collectionFilter = normalizeCollectionFilter(data.collectionFilter);
     for (const list of [data.saved || [], data.replies || []]) for (const item of list) item.tags = normalizeTags(item.tags);
     data.apiProfiles = validateApiProfiles(data.apiProfiles || []);
     if (!data.apiProfiles.length && data.api?.url && data.api?.model) {
@@ -42,4 +43,41 @@ export function mergeTaggedRecords(current, incoming, makeId, signature) {
         }
     }
     return map;
+}
+
+export function normalizeCollectionFilter(value) {
+    if (value == null) return { enabled: true, start: '<think>', end: '</think>' };
+    if (typeof value !== 'object' || typeof value.start !== 'string' || typeof value.end !== 'string' || value.start.length > 200 || value.end.length > 200) throw Error('收藏过滤标记无效');
+    const filter = { enabled: value.enabled !== false, start: value.start, end: value.end };
+    if (filter.enabled && (!filter.start.trim() || !filter.end.trim() || filter.start === filter.end)) throw Error('请填写不同的开头和结尾标记，或关闭过滤');
+    return filter;
+}
+
+export function filterCollectedText(text, value) {
+    const filter = normalizeCollectionFilter(value);
+    const source = String(text || '');
+    if (!filter.enabled) return source.trim();
+    let cursor = 0, output = '', depth = 0;
+    while (cursor < source.length) {
+        const start = source.indexOf(filter.start, cursor);
+        const end = depth ? source.indexOf(filter.end, cursor) : -1;
+        if (depth && end !== -1 && (start === -1 || end < start)) {
+            depth--; cursor = end + filter.end.length;
+        } else if (start !== -1) {
+            if (!depth) output += source.slice(cursor, start);
+            depth++; cursor = start + filter.start.length;
+        } else {
+            if (!depth) output += source.slice(cursor);
+            break;
+        }
+    }
+    return output.trim();
+}
+
+export function snapshotCollectedMessage(message, filter, id, now, scene = false, storyId = '') {
+    if (!message || message.is_system) throw Error('不能收藏系统消息');
+    const text = filterCollectedText(message.mes, filter);
+    if (!text) throw Error('过滤后没有可收藏的正文');
+    const role = String(message.name || (message.is_user ? '用户' : '角色'));
+    return { id, title: role + ' · ' + text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 24), text, role, tags: [], created: now, updated: now, ...(scene ? { contentType: 'scene' } : { storyId }) };
 }

@@ -1,8 +1,8 @@
 import { chatIdentity, collectContext, requestCompletion, requestModels, upgradeAffixes } from './core.mjs';
-import { upgradeUserData } from './data-core.js';
+import { upgradeUserData, snapshotCollectedMessage } from './data-core.js';
 
 const MODULE = 'little_theater_v1';
-const PANEL_URL = new URL('./panel.html?v=1.3.3', import.meta.url).href;
+const PANEL_URL = new URL('./panel.html?v=1.3.4', import.meta.url).href;
 let shell, frame, settings, sending = false, tavernBusy = false, observer, scrollLock;
 const clone = value => JSON.parse(JSON.stringify(value));
 const getContext = () => SillyTavern.getContext();
@@ -143,27 +143,20 @@ async function send(text, storyId, sourceIdentity) {
     }
 }
 
-function collectReply(index) {
+function collectMessage(index, scene = false) {
     const context = getContext();
     const message = context.chat[index];
-    if (!message || message.is_user || message.is_system || !message.mes?.trim()) return;
-    const data = settings.data;
-    data.replies ||= [];
-    const role = message.name || context.name2 || '角色';
-    const text = message.mes;
-    if (data.replies.some(r => r.text === text && r.role === role)) { notify('info', '这条回复已经收藏'); return; }
-    data.replies.unshift({
-        id: crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
-        title: role + ' · ' + text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 24),
-        text,
-        role,
-        tags: [],
-        storyId: settings.lastStoryByChat?.[chatIdentity(context)] || '',
-        created: Date.now(), updated: Date.now(),
-    });
-    saveSettings();
-    synchronizePanel();
-    notify('success', '已收藏到“小剧场 → 已保存 → 角色回复”');
+    if (!message || message.is_system || (!scene && message.is_user)) return;
+    try {
+        const record = snapshotCollectedMessage(message, settings.data.collectionFilter,
+            crypto.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2),
+            Date.now(), scene, settings.lastStoryByChat?.[chatIdentity(context)] || '');
+        const list = scene ? (settings.data.saved ||= []) : (settings.data.replies ||= []);
+        if (list.some(r => r.text === record.text && r.role === record.role && (!scene || r.contentType === 'scene'))) { notify('info', '这条消息已经收藏'); return; }
+        list.unshift(record);
+        saveSettings(); synchronizePanel();
+        notify('success', scene ? '消息已独立保存到小剧场收藏，删除聊天消息不会删除收藏' : '已收藏到角色回复');
+    } catch (error) { notify('error', error.message); }
 }
 
 function installBookmarks() {
@@ -171,18 +164,20 @@ function installBookmarks() {
     document.querySelectorAll('#chat .mes[mesid]').forEach(element => {
         const index = Number(element.getAttribute('mesid'));
         const message = context.chat[index];
-        const existing = element.querySelector('.lt-reply-bookmark');
-        if (!message || message.is_user || message.is_system) { existing?.remove(); return; }
-        if (existing) return;
-        const toolbar = element.querySelector('.mes_buttons');
-        if (!toolbar) return;
-        const button = document.createElement('button');
-        button.className = 'mes_button lt-reply-bookmark fa-solid fa-bookmark';
-        button.title = '收藏到脑洞小剧场';
-        button.setAttribute('aria-label', button.title);
-        button.type = 'button';
-        button.addEventListener('click', e => { e.stopPropagation(); collectReply(Number(element.getAttribute('mesid'))); });
-        toolbar.append(button);
+        for (const scene of [true, false]) {
+            const cls = scene ? 'lt-scene-bookmark' : 'lt-reply-bookmark';
+            const existing = element.querySelector('.' + cls);
+            if (!message || message.is_system || (!scene && message.is_user)) { existing?.remove(); continue; }
+            if (existing) continue;
+            const toolbar = element.querySelector('.mes_buttons');
+            if (!toolbar) continue;
+            const button = document.createElement('button');
+            button.className = 'mes_button ' + cls + ' fa-solid ' + (scene ? 'fa-masks-theater' : 'fa-bookmark');
+            button.title = scene ? '收藏消息到小剧场（独立保存）' : '收藏到角色回复';
+            button.setAttribute('aria-label', button.title); button.type = 'button';
+            button.addEventListener('click', e => { e.stopPropagation(); collectMessage(Number(element.getAttribute('mesid')), scene); });
+            toolbar.append(button);
+        }
     });
 }
 

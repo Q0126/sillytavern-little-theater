@@ -8,5 +8,5 @@
 #lt-dialog .lt-close{font:inherit;border:1px solid var(--SmartThemeBorderColor,#ffffff30);border-radius:8px;padding:5px 10px;background:transparent;color:inherit;cursor:pointer;white-space:nowrap}
 #lt-dialog #lt-panel-frame{display:block!important;border:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:none!important;flex:1 1 0;min-height:0!important;min-width:0!important;margin:0!important;padding:0!important;background:#171820}
 .lt-settings{padding:8px 0}.lt-settings .menu_button{width:100%;text-align:center}
-.lt-reply-bookmark{background:transparent;border:0;color:inherit;font-size:inherit;cursor:pointer;opacity:.8}
+.lt-reply-bookmark,.lt-scene-bookmark{background:transparent;border:0;color:inherit;font-size:inherit;cursor:pointer;opacity:.8}
 @media(max-width:600px){#lt-dialog.lt-shell{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;border-radius:16px!important}#lt-dialog .lt-bar{padding:8px 11px}}
